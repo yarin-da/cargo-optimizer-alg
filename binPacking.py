@@ -400,6 +400,7 @@ def run(input_data):
     number_of_bins = 0
     start = time.time()
 
+    # solve
     bins, rest = binpack(packages, container)
     if rest:
         print("invalid data", rest)
@@ -422,11 +423,12 @@ def run(input_data):
     
     result['solution'] = []
     for i in range(len(bins[0])):
+        print(bins[0][i])
         result['solution'].append({
             "type": bins[0][i].ID.split('-')[0],
             'x': bins[0][i].X,
             'y': bins[0][i].Y,
             'z': bins[0][i].Z,
         })
-        print(f"box id: {bins[0][i].ID} coordinates {bins[0][i].X, bins[0][i].Y, bins[0][i].Z}")
+        # print(f"box id: {bins[0][i].ID} coordinates {bins[0][i].X, bins[0][i].Y, bins[0][i].Z}")
     return result
