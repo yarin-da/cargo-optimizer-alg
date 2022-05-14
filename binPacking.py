@@ -168,13 +168,16 @@ class Package(object):
 
 
 class Box(Package):
-    def __init__(self, size, id=0, can_roat=True, can_down=True, priority=0, weight=0, nosort=False):
+    def __init__(self, size, id=0, can_roat=True, can_down=True, rotX=0, rotY=0, rotZ=0, priority=0, weight=0, nosort=False):
         super().__init__(size, weight, nosort)
         self.X = self.Y = self.Z = -1
         self.ID = id
         self.can_roat = can_roat
         self.can_down = can_down
         self.priority = priority
+        self.rotX = rotX
+        self.rotY = rotY
+        self.rotZ = rotZ
 
     def set_coordinates(self, coordinates):
         self.X = coordinates[0]
@@ -329,8 +332,17 @@ def allpermutations_helper(permuted, todo, maxcounter, callback, bin, bestpack, 
         if thispackage.can_roat is False:
             return allpermutations_helper(permuted + [thispackage], others, maxcounter, callback, bin, bestpack,
                                           counter)
-        for dimensions in set(permutations((thispackage[0], thispackage[1], thispackage[2]))):
-            thispackage = Box(dimensions, nosort=True)
+        w, h, d = thispackage
+        rotations = [
+            [ (w, h, d), 0,  0,  0  ],
+            [ (w, d, h), 90, 0,  0  ],
+            [ (h, w, d), 0,  0,  90 ],
+            [ (h, d, w), 90, 0,  90 ],
+            [ (d, h, w), 0,  90, 0  ],
+            [ (d, w, h), 90, 90, 0  ],
+        ]
+        for dims, rotX, rotY, rotZ in rotations:
+            thispackage = Box(size=dims, rotX=rotX, rotY=rotY, rotZ=rotZ, nosort=True)
             if thispackage in bin:
                 counter = allpermutations_helper(permuted + [thispackage], others, maxcounter, callback,
                                                  bin, bestpack, counter)
@@ -359,8 +371,8 @@ def allpermutations(todo, bin, iterlimit=5000):
         trypack(bin, todo, bestpack)
         # now try permutations
         allpermutations_helper([], todo, iterlimit, trypack, bin, bestpack, 0)
-    except Timeout:
-        pass
+    except Timeout as e:
+        print(e)
     return bestpack['bins'], bestpack['rest']
 
 
@@ -423,12 +435,14 @@ def run(input_data):
     
     result['solution'] = []
     for i in range(len(bins[0])):
-        print(bins[0][i])
         result['solution'].append({
             "type": bins[0][i].ID.split('-')[0],
             'x': bins[0][i].X,
             'y': bins[0][i].Y,
             'z': bins[0][i].Z,
+            'rotation-x': bins[0][i].rotX,
+            'rotation-y': bins[0][i].rotY,
+            'rotation-z': bins[0][i].rotZ,
         })
-        # print(f"box id: {bins[0][i].ID} coordinates {bins[0][i].X, bins[0][i].Y, bins[0][i].Z}")
+        # print(f"box id: {bins[0][i].ID} coordinates {bins[0][i].X, bins[0][i].Y, bins[0][i].Z} rotations {bins[0][i].rotX, bins[0][i].rotY, bins[0][i].rotZ}")
     return result
