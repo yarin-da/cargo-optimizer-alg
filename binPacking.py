@@ -357,6 +357,7 @@ def trypack(bin, packages, bestpack):
         bestpack['bincount'] = len(bins)
         bestpack['bins'] = bins
         bestpack['rest'] = rest
+    # todo try to remove
     if bestpack['bincount'] < 2:
         raise Timeout('optimal solution found')
     return len(packages)
@@ -394,13 +395,13 @@ def run(input_data):
             'height': package['height'],
             'depth': package['depth'],
         })
-        package_size = (package['width'], package['height'], package['depth'])
+        package_size = (package['height'],package['width'], package['depth'])
         package_type = package['type']
-        packages += [Box(size=package_size, id=f'{package_type}-{i}') for i in range(package['amount'])]
+        packages += [Box(size=package_size, id=f'{package_type}-{i}', nosort=True) for i in range(package['amount'])]
 
     container_data = input_data['container']
-    container_size = (container_data['width'], container_data['height'], container_data['depth'])
-    container = Package(size=container_size)
+    container_size = ( container_data['height'],container_data['width'], container_data['depth'])
+    container = Package(size=container_size, nosort=True)
     result['container'] = {
         'width': container_data['width'],
         'height': container_data['height'],
