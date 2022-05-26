@@ -275,9 +275,9 @@ if __name__ == '__main__':
     z_list = [m.add_var(name="z_" + str(i), lb=0) for i in range(n)]
 
     # parameters
-    l_list = [box.length for box in boxes]
-    w_list = [box.width for box in boxes]
-    h_list = [box.heigth for box in boxes]
+    h_list = [box.size[0] for box in boxes]
+    w_list = [box.size[1] for box in boxes]
+    l_list = [box.size[2] for box in boxes]
 
     # add objective functions
     m.objective = maximize(xsum(l_list[i] * w_list[i] * h_list[i] * s_list[i] for i in range(n)) / (L * W * H))
