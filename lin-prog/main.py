@@ -1,14 +1,7 @@
-import pyshipping.package as ship
-from scipy.optimize import linprog
+# import pyshipping.package as ship
+# from scipy.optimize import linprog
 from mip import *
-from Box import Box
 import json
-
-
-
-
-
-#####################
 
 
 class Package(object):
@@ -31,7 +24,7 @@ class Package(object):
         if not nosort:
             (self.heigth, self.width, self.length) = sorted((int(self.heigth), int(self.width),
                                                              int(self.length)), reverse=True)
-        self.volume = self.heigth * self.width *self.length
+        self.volume = self.heigth * self.width * self.length
         self.size = (self.heigth, self.width, self.length)
 
     def _get_gurtmass(self):
@@ -47,13 +40,14 @@ class Package(object):
         otherdimensions = list(dimensions)
         del otherdimensions[otherdimensions.index(maxdimension)]
         return maxdimension + 2 * (sum(otherdimensions))
+
     gurtmass = property(_get_gurtmass)
 
     def hat_gleiche_seiten(self, other):
         """Prüft, ob other mindestens eine gleich grosse Seite mit self hat."""
 
         meineseiten = set([(self.heigth, self.width), (self.heigth, self.length), (self.width, self.length)])
-        otherseiten = set([(other.heigth, other.width), (other.heigth, other.length),(other.width, other.length)])
+        otherseiten = set([(other.heigth, other.width), (other.heigth, other.length), (other.width, other.length)])
         return not meineseiten.isdisjoint(otherseiten)
 
     def __getitem__(self, key):
@@ -85,7 +79,7 @@ class Package(object):
         return self[0] >= other[0] and self[1] >= other[1] and self[2] >= other[2]
 
     def __hash__(self):
-        return self.heigth+(self.width<<16)+(self.length<<32)
+        return self.heigth + (self.width << 16) + (self.length << 32)
 
     def __eq__(self, other):
         """Package objects are equal if they have exactly the same dimensions.
@@ -99,9 +93,9 @@ class Package(object):
         """
         return (self.heigth == other.heigth and self.width == other.width and self.length == other.length)
 
-    def __cmp__(self, other):
-        """Enables to sort by Volume."""
-        return cmp(self.volume, other.volume)
+    # def __cmp__(self, other):
+    #     """Enables to sort by Volume."""
+    #     return cmp(self.volume, other.volume)
 
     def __mul__(self, multiplicand):
         """Package can be multiplied with an integer. This results in the Package beeing
@@ -110,7 +104,7 @@ class Package(object):
            >>> Package((400,300,600)) * 2
            <Package 600x600x400>
            """
-        return Package((self.heigth, self.width, self.length*multiplicand), self.weight*multiplicand)
+        return Package((self.heigth, self.width, self.length * multiplicand), self.weight * multiplicand)
 
     def __add__(self, other):
         """
@@ -121,8 +115,8 @@ class Package(object):
             >>> Package((1600, 250, 480)) + Package((1600, 490, 480))
             <Package 1600x740x480>
             """
-        meineseiten = set([(self.heigth, self.width), (self.heigth, self.length),(self.width, self.length)])
-        otherseiten = set([(other.heigth, other.width), (other.heigth, other.length),(other.width, other.length)])
+        meineseiten = set([(self.heigth, self.width), (self.heigth, self.length), (self.width, self.length)])
+        otherseiten = set([(other.heigth, other.width), (other.heigth, other.length), (other.width, other.length)])
         if meineseiten.isdisjoint(otherseiten):
             raise ValueError("%s has no fitting sites to %s" % (self, other))
         candidates = sorted(meineseiten.intersection(otherseiten), reverse=True)
@@ -149,13 +143,15 @@ class Package(object):
 
 
 class Box(Package):
-    def __init__(self, size, id=0, can_roat=True, can_down=True, rotX=0, rotY=0, rotZ=0, priority=0, weight=0, nosort=False):
+    def __init__(self, size, id=0, can_roat=True, can_down=True, rotX=0, rotY=0, rotZ=0, priority=0, profit=0, weight=0,
+                 nosort=False):
         super().__init__(size, weight, nosort)
         self.X = self.Y = self.Z = -1
         self.ID = id
         self.can_roat = can_roat
         self.can_down = can_down
         self.priority = priority
+        self.profit = profit
         self.rotX = rotX
         self.rotY = rotY
         self.rotZ = rotZ
@@ -173,6 +169,13 @@ class Box(Package):
             return None
         coordinates = (self.X, self.Y, self.Z)
         return coordinates
+
+    def get_profit(self):
+        return self.profit
+
+    def get_weight(self):
+        return self.weight
+
 
 
 class EMS:
@@ -202,8 +205,6 @@ class EMS:
 #####################
 
 
-
-
 def parse_json_input(input_data):
     result = {}
     result['packages'] = []
@@ -214,25 +215,39 @@ def parse_json_input(input_data):
             'width': package['width'],
             'height': package['height'],
             'depth': package['depth'],
+            'weight': package['weight'],
+            'priority': package['priority'],
+            'profit': package['profit'],
+            'canRotate': package['canRotate'],
+            'canStackAbove': package['canStackAbove']
         })
-        package_size = (package['height'],package['width'], package['depth'])
+        weight = package['weight']
+        priority = package['priority']
+        profit = package['profit']
+        canRotate = package['canRotate']
+        canStackAbove = package['canStackAbove']
+
+        package_size = (package['height'], package['width'], package['depth'])
         package_type = package['type']
-        boxes += [Box(size=package_size, id=f'{package_type}-{i}', nosort=True) for i in range(package['amount'])]
+        boxes += [Box(size=package_size, id=f'{package_type}-{i}', weight=weight, priority=priority, profit=profit,
+                      can_roat=canRotate, can_down=canStackAbove,
+                      nosort=True) for i in range(package['amount'])]
 
     container_data = input_data['container']
-    container_size = ( container_data['height'],container_data['width'], container_data['depth'])
-    container = Package(size=container_size, nosort=True)
+    maxWeight = container_data['maxWeight']
+    container_size = (container_data['height'], container_data['width'], container_data['depth'])
+    container = Package(size=container_size, weight=maxWeight, nosort=True)
     result['container'] = {
         'width': container_data['width'],
         'height': container_data['height'],
         'depth': container_data['depth'],
+        'cost': container_data['cost'],
+        'maxWeight': container_data['maxWeight']
     }
     # result <-- the object that we'd finally return to the client
     # container <-- an object that contains the dimensions of the container
     # boxes <-- an array of Boxes
     return result, container, boxes
-
-
 
 
 def generateBox():
@@ -249,7 +264,6 @@ if __name__ == '__main__':
     m = Model("CLP")
     M = 1e7
 
-    L, W, H = (600, 200, 200)
 
     try:
         json_file = open(filepath, 'r')
@@ -260,15 +274,23 @@ if __name__ == '__main__':
     except Exception as e:
         print('received exception', e)
         exit(-1)
-    
-    # add decision variables
+
+    L, W, H = (container.length, container.width, container.heigth)
+
+    # Add decision variables.
     a_list = [m.add_var(name="a_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     b_list = [m.add_var(name="b_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     c_list = [m.add_var(name="c_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     d_list = [m.add_var(name="d_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     e_list = [m.add_var(name="e_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     f_list = [m.add_var(name="f_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
+    #  A binary variable which is equal to 1 if box i is placed in the container
     s_list = [m.add_var(name="s_" + str(i), var_type=BINARY) for i in range(n)]
+
+    # Profit values.
+    v_list = [boxes[i].get_profit() for i in range(n)]
+    # Weights list.
+    weights_list = [boxes[i].get_weight() for i in range(n)]
 
     x_list = [m.add_var(name="x_" + str(i), lb=0) for i in range(n)]
     y_list = [m.add_var(name="y_" + str(i), lb=0) for i in range(n)]
@@ -281,9 +303,11 @@ if __name__ == '__main__':
 
     # add objective functions
     m.objective = maximize(xsum(l_list[i] * w_list[i] * h_list[i] * s_list[i] for i in range(n)) / (L * W * H))
+    m.objective = maximize(xsum(s_list[i] * v_list[i] for i in range(n)))
 
-    # add constraints
+    # Add constraints
     for i in range(n):
+        m += (weights_list[i] * s_list[i]) <= container.weight
         m += x_list[i] + l_list[i] <= (L + M * (1 - s_list[i]))
         m += y_list[i] + w_list[i] <= (W + M * (1 - s_list[i]))
         m += z_list[i] + h_list[i] <= (H + M * (1 - s_list[i]))
@@ -298,7 +322,7 @@ if __name__ == '__main__':
                 f"c_{i}_{j}") + m.var_by_name(f"d_{i}_{j}") + m.var_by_name(f"e_{i}_{j}") + \
                  m.var_by_name(f"f_{i}_{j}") >= (s_list[i] + s_list[j] - 1)
     m.max_gap = 0.05
-    status = m.optimize(max_seconds=200)
+    status = m.optimize(max_seconds=10000000000000000000)
     if status == OptimizationStatus.OPTIMAL:
         print('optimal solution cost {} found'.format(m.objective_value))
     elif status == OptimizationStatus.FEASIBLE:
@@ -310,3 +334,4 @@ if __name__ == '__main__':
         for v in m.vars:
             # if abs(v.x) > 1e-6:  # only printing non-zeros
             print('{} : {} '.format(v.name, v.x))
+
