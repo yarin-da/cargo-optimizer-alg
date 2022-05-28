@@ -6,6 +6,18 @@ DIMENSIONS = 3
 
 
 @unique
+class PerturbOrder(Enum):
+    VOLUME = auto()
+    WEIGHT = auto()
+
+
+@unique
+class PerturbRotation(Enum):
+    INDIVIDUAL = auto()
+    IDENTICAL  = auto()
+
+
+@unique
 class SortingType(Enum):
     DECREASING_TAXABILITY    = auto()
     DECREASING_PRIORITY      = auto()
@@ -89,10 +101,10 @@ class Box:
         self.stackable = stackable
         self.combination = combination
         self.customer_code = customer_code
+        self.volume = size[0] * size[1] * size[2]
         # TODO: calculate taxability
         alpha = weight / 1
-        volume = size[0] * size[1] * size[2]
-        self.taxability = max(weight, alpha * volume)
+        self.taxability = max(weight, alpha * self.volume)
 
     def get_common_dims(self, other):
         return [i for i in range(DIMENSIONS) if self.size[i] == other.size[i]]

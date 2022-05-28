@@ -1,9 +1,11 @@
-# code based on article:
+# the code is based on article: "An optimization approach for a complex real-life container loading problem"
 # https://www.researchgate.net/publication/355421342_An_optimization_approach_for_a_complex_real-life_container_loading_problem
 
 
 import random
-from definitions import Box, CombinationType, Combination, SortingType
+import json
+# TODO: from typing import Tuple
+from definitions import Box, RotationType, CombinationType, Combination, SortingType, PerturbRotation, PerturbOrder
 
 
 SKIP_COMBINE_PROBABILITY = 0.5
@@ -52,13 +54,53 @@ def preprocess_boxes(boxes: list[Box]) -> list[Box]:
 
 
 def sort_boxes(boxes: list[Box]) -> None:
-    sorting_type = random.choice(SortingType)
+    sorting_type = random.choice(list(SortingType))
     if sorting_type == SortingType.DECREASING_TAXABILITY:
         boxes.sort(key=lambda box: box.taxability, reverse=True)
     elif sorting_type == SortingType.DECREASING_PRIORITY:
         boxes.sort(key=lambda box: (box.priority, box.taxability), reverse=True)
     else:
         boxes.sort(key=lambda box: (box.customer_code, box.taxability), reverse=True)
+
+
+def rotate(box: Box, rotation_type: RotationType = None) -> None:
+    if rotation_type is None:
+        rotation_type = random.choice(box.rotations)
+    
+    w, h, d = box.size
+    if rotation_type == RotationType.X:
+        box.size = (w, d, h)
+    elif rotation_type == RotationType.Z:
+        box.size = (h, w, d)
+    elif rotation_type == RotationType.XZ:
+        box.size = (h, d, w)
+    elif rotation_type == RotationType.Y:
+        box.size = (d, h, w)
+    elif rotation_type == RotationType.XY:
+        box.size = (d, w, h)
+
+
+def perturb_phase1(boxes: list[Box]) -> None:
+    # TODO: update possible rotations?
+    perturb_rotation = random.choice(list(PerturbRotation))
+    if perturb_rotation == PerturbRotation.INDIVIDUAL:
+        for box in boxes:
+            rotate(box)
+    else: # IDENTICAL
+        rotation_per_type = {}
+        for box in boxes:
+            if box.box_type not in rotation_per_type:
+                rotation_per_type[box.box_type] = random.choice(box.rotations)
+            rotate(box, rotation_per_type[box.box_type])
+
+
+def perturb_phase2(boxes: list[Box]) -> None:
+    perturb_rotation = random.choice(list(PerturbOrder))
+    key = lambda box: box.volume if perturb_rotation == PerturbOrder.VOLUME else lambda box: box.weight
+    for i in range(len(boxes) - 1):
+        ratio = key(boxes[i]) / key(boxes[i + 1])
+        if 0.7 <= ratio <= 1.3 and chance(0.5):
+            boxes[i], boxes[i + 1] = boxes[i + 1], boxes[i]
 
 
 # Randomized Constructive Heuristic
@@ -68,27 +110,25 @@ def rch(boxes: list[Box]):
         if not chance(SKIP_COMBINE_PROBABILITY):
             boxes = preprocess_boxes(boxes)
 
-        # sorting phase (section 4.3)
+        # sort/perturb phase (section 4.3)
         sort_boxes(boxes)
+        perturb_phase1(boxes)
+        perturb_phase2(boxes)
 
-    return None
+        # construct a solution (section 4.4)
+    result = {}
+    return result
     
 
 def parse_input(input_data: bytearray):
-    # TODO: parse data file to json object
-    return input_data
-
-
-def parse_result(output_data):
-    # TODO: parse result
-    return output_data
+    parsed_data = json.loads(input_data)
+    return parsed_data
 
 
 def pack(input_data):
     parsed_input = parse_input(input_data)
     result = rch(parsed_input)
-    parsed_result = parse_result(result)
-    return parsed_result
+    return result
 
 
 def main():
