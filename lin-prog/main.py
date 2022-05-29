@@ -176,6 +176,11 @@ class Box(Package):
     def get_weight(self):
         return self.weight
 
+    def get_priority(self):
+        return self.priority
+
+    def get_canStackAbove(self):
+        return self.can_down
 
 
 class EMS:
@@ -264,7 +269,6 @@ if __name__ == '__main__':
     m = Model("CLP")
     M = 1e7
 
-
     try:
         json_file = open(filepath, 'r')
         raw_data = json_file.read()
@@ -282,7 +286,18 @@ if __name__ == '__main__':
     b_list = [m.add_var(name="b_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     c_list = [m.add_var(name="c_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     d_list = [m.add_var(name="d_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
-    e_list = [m.add_var(name="e_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
+    #e_list = [m.add_var(name="e_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
+
+    e_list = []
+    # e_ij is a binary variable which is equal to 1 if box i is placed on the top of the box j.
+    # If boxes[j].StackAbove == false --> for all i, e_ij = 0.
+    for i in range(n):
+        for j in range(i + 1, n):
+            if not boxes[j].get_canStackAbove():
+                m.add_var(name="e_" + str(i) + "_" + str(j), lb=0, ub=0) # e_ij = 0
+            else:
+                m.add_var(name="e_" + str(i) + "_" + str(j), var_type=BINARY) # e_ij binary
+
     f_list = [m.add_var(name="f_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     #  A binary variable which is equal to 1 if box i is placed in the container
     s_list = [m.add_var(name="s_" + str(i), var_type=BINARY) for i in range(n)]
@@ -291,6 +306,8 @@ if __name__ == '__main__':
     v_list = [boxes[i].get_profit() for i in range(n)]
     # Weights list.
     weights_list = [boxes[i].get_weight() for i in range(n)]
+    priority_list = [boxes[i].get_priority() for i in range(n)]
+    max_priority = max(priority_list)
 
     x_list = [m.add_var(name="x_" + str(i), lb=0) for i in range(n)]
     y_list = [m.add_var(name="y_" + str(i), lb=0) for i in range(n)]
@@ -301,9 +318,13 @@ if __name__ == '__main__':
     w_list = [box.size[1] for box in boxes]
     l_list = [box.size[2] for box in boxes]
 
-    # add objective functions
+    # Add objective functions
+    # Maximize volume.
     m.objective = maximize(xsum(l_list[i] * w_list[i] * h_list[i] * s_list[i] for i in range(n)) / (L * W * H))
+    # Maximize profit.
     m.objective = maximize(xsum(s_list[i] * v_list[i] for i in range(n)))
+    # for all 0 < i < n : Max sum(si * (maxPriority + 1) - priority_i)
+    m.objective = maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n)))
 
     # Add constraints
     for i in range(n):
@@ -319,10 +340,11 @@ if __name__ == '__main__':
             m += z_list[i] + h_list[i] <= (z_list[j] + M * (1 - m.var_by_name(f"e_{i}_{j}")))
             m += z_list[j] + h_list[j] <= (z_list[i] + M * (1 - m.var_by_name(f"f_{i}_{j}")))
             m += m.var_by_name(f"a_{i}_{j}") + m.var_by_name(f"b_{i}_{j}") + m.var_by_name(
-                f"c_{i}_{j}") + m.var_by_name(f"d_{i}_{j}") + m.var_by_name(f"e_{i}_{j}") + \
-                 m.var_by_name(f"f_{i}_{j}") >= (s_list[i] + s_list[j] - 1)
+                f"c_{i}_{j}") + m.var_by_name(f"d_{i}_{j}") + m.var_by_name(f"e_{i}_{j}") + m.var_by_name(
+                f"f_{i}_{j}") >= (s_list[i] + s_list[j] - 1)
     m.max_gap = 0.05
     status = m.optimize(max_seconds=10000000000000000000)
+    print('----- STATUS : ', status, '------')
     if status == OptimizationStatus.OPTIMAL:
         print('optimal solution cost {} found'.format(m.objective_value))
     elif status == OptimizationStatus.FEASIBLE:
@@ -334,4 +356,3 @@ if __name__ == '__main__':
         for v in m.vars:
             # if abs(v.x) > 1e-6:  # only printing non-zeros
             print('{} : {} '.format(v.name, v.x))
-
