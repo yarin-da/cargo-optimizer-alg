@@ -129,8 +129,8 @@ def update_potential_points(box: Box, point: Point, potential_points: list[Point
     # add new potential points 
     # TODO: flip h and d?
     potential_points.append(Point(point.x + box.size.w, point.y, point.z))
-    potential_points.append(Point(point.x, point.y + box.size.h, point.z))
-    potential_points.append(Point(point.x, point.y, point.z + box.size.d))
+    potential_points.append(Point(point.x, point.y + box.size.d, point.z))
+    potential_points.append(Point(point.x, point.y, point.z + box.size.h))
 
 
 # Algorithm 2

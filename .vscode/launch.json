@@ -8,7 +8,7 @@
             "name": "Python: Heuristic RCH",
             "type": "python",
             "request": "launch",
-            "program": "./heuristic-rch/rch.py",
+            "program": "./heuristic-rch/server.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

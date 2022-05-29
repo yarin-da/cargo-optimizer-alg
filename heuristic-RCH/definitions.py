@@ -124,18 +124,18 @@ class Combination:
         # TODO: flip h and d?
         if self.combination_type == CombinationType.WH_LOWER:
             self.first.set_position(Point(x, y, z))
-            self.second.set_position(Point(x, y, z + ad))
+            self.second.set_position(Point(x, y + ad, z))
         elif self.combination_type == CombinationType.WD_LOWER:
             self.first.set_position(Point(x, y, z))
-            self.second.set_position(Point(x, y + ah, z))
+            self.second.set_position(Point(x, y, z + ah))
         elif self.combination_type == CombinationType.HD_LOWER:
             self.first.set_position(Point(x, y, z))
             self.second.set_position(Point(x + aw, y, z))
         elif self.combination_type == CombinationType.WH_HIGHER:
-            self.first.set_position(Point(x, y, z + bd))
+            self.first.set_position(Point(x, y + bd, z))
             self.second.set_position(Point(x, y, z))
         elif self.combination_type == CombinationType.WD_HIGHER:
-            self.first.set_position(Point(x, y + bh, z))
+            self.first.set_position(Point(x, y, z + bh))
             self.second.set_position(Point(x, y, z))
         else:
             self.first.set_position(Point(x + bw, y, z))
@@ -248,13 +248,14 @@ class OccupiedSpace(Exception):
 class UsedSpace:
     def __init__(self, size: Size):
         self.size = size
-        self.used_space_map = [[[False for _ in range(size.d)] for _ in range(size.h)] for _ in range(size.w)]
+        # TODO: flip h and d?
+        self.used_space_map = [[[False for _ in range(size.h)] for _ in range(size.d)] for _ in range(size.w)]
 
     def add(self, box: Box, point: Point) -> None:
         # TODO: flip h and d?
         for x in range(point.x, point.x + box.size.w):
-            for y in range(point.y, point.y + box.size.h):
-                for z in range(point.z, point.z + box.size.d):
+            for y in range(point.y, point.y + box.size.d):
+                for z in range(point.z, point.z + box.size.h):
                     if not self.used_space_map[x][y][z]:
                         self.used_space_map[x][y][z] = True
                     else:
@@ -262,12 +263,15 @@ class UsedSpace:
 
     def can_be_added(self, box: Box, point: Point) -> bool:
         # TODO: flip h and d?
-        for x in range(point.x, point.x + box.size.w):
-            for y in range(point.y, point.y + box.size.h):
-                for z in range(point.z, point.z + box.size.d):
-                    if self.used_space_map[x][y][z]: 
-                        return False
-        return True
+        try:
+            for x in range(point.x, point.x + box.size.w):
+                for y in range(point.y, point.y + box.size.d):
+                    for z in range(point.z, point.z + box.size.h):
+                        if self.used_space_map[x][y][z]: 
+                            return False
+            return True
+        except Exception as e:
+            raise e
 
 
 class Packing:
@@ -293,8 +297,8 @@ class Packing:
         
         # does the box exceed the container boundaries
         # TODO: flip h and d?
-        corner = Point(point.x + box.size.w, point.y + box.size.h, point.z + box.size.d)
-        if corner.x >= self.container.size.w or corner.y >= self.container.size.h or corner.z >= self.container.size.d:
+        corner = Point(point.x + box.size.w, point.y + box.size.d, point.z + box.size.h)
+        if corner.x >= self.container.size.w or corner.y >= self.container.size.d or corner.z >= self.container.size.h:
             return False
         
         # does the box overlap another box
@@ -318,14 +322,21 @@ class PackingInput:
         self.boxes = []
         packages = json_data['packages']
         for pkg in packages:
-            for _ in range(pkg['amount']):
+            amount = int(pkg['amount'])
+            for _ in range(amount):
+                canRotate = pkg['canRotate'] if type(pkg['canRotate']) == bool else pkg['canRotate'].lower() == 'true'
+                canStackAbove = pkg['canStackAbove'] if type(pkg['canStackAbove']) == bool else pkg['canStackAbove'].lower() == 'true'
+                width, height, depth = int(pkg['width']), int(pkg['height']), int(pkg['depth'])
+                priority = int(pkg['priority'])
+                weight = int(pkg['weight'])
+
                 box = Box(
                     box_type=pkg['type'],
-                    size=Size(pkg['width'], pkg['height'], pkg['depth']),
-                    weight=pkg['weight'],
-                    priority=pkg['priority'],
-                    rotations=set(list(RotationType)) if pkg['canRotate'] else set([RotationType.NONE]),
-                    stackable=pkg['canStackAbove'],
+                    size=Size(width, height, depth),
+                    weight=weight,
+                    priority=priority,
+                    rotations=set(list(RotationType)) if canRotate else set([RotationType.NONE]),
+                    stackable=canStackAbove,
                     combination=None,
                     customer_code=1
                 )

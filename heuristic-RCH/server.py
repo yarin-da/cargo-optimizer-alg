@@ -1,4 +1,5 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import traceback
 import logging
 import json
 import rch
@@ -32,6 +33,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             # write solution json to body
             self.wfile.write(solution_bytes)
         except Exception as e:
+            traceback.print_exc()
             print(e)
             # 500 Internal Server Error
             self.send_error(code=500)
