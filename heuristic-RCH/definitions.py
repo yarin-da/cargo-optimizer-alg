@@ -193,14 +193,13 @@ class Box:
         stackable = box_a.stackable and box_b.stackable
         rotations = box_a.rotations.intersection(box_b.rotations)
 
-        # TODO: flip h and d?
         # size depends on the type of combination
         if combination.combination_type in [CombinationType.WH_LOWER, CombinationType.WH_HIGHER]:
-            size = Size(box_a.size.w, box_a.size.h, box_a.size.d + box_b.size.d)
+            size = Size(box_a.size.w, box_a.size.d + box_b.size.d, box_a.size.h)
         elif combination.combination_type in [CombinationType.WD_LOWER, CombinationType.WD_HIGHER]:
-            size = Size(box_a.size.w, box_a.size.h + box_b.size.h, box_a.size.d)
+            size = Size(box_a.size.w, box_a.size.d, box_a.size.h + box_b.size.h)
         else:
-            size = Size(box_a.size.w + box_b.size.w, box_a.size.h, box_a.size.d)
+            size = Size(box_a.size.w + box_b.size.w, box_a.size.d, box_a.size.h)
 
         # call constructor
         return cls('combined', size, weight, priority, rotations, stackable, combination)
@@ -223,20 +222,18 @@ class UsedSpace:
         self.used_space_map = [[[False for _ in range(size.d)] for _ in range(size.h)] for _ in range(size.w)]
 
     def add(self, box: Box, point: Point) -> None:
-        # TODO: flip h and d?
         for x in range(point.x, point.x + box.size.w):
-            for y in range(point.y, point.y + box.size.h):
-                for z in range(point.z, point.z + box.size.d):
+            for y in range(point.y, point.y + box.size.d):
+                for z in range(point.z, point.z + box.size.h):
                     if not self.used_space_map[x][y][z]:
                         self.used_space_map[x][y][z] = True
                     else:
                         raise OccupiedSpace(f'occupied:: x={x} y={y} z={z} type={box.box_type}')
 
     def can_be_added(self, box: Box, point: Point) -> bool:
-        # TODO: flip h and d?
         for x in range(point.x, point.x + box.size.w):
-            for y in range(point.y, point.y + box.size.h):
-                for z in range(point.z, point.z + box.size.d):
+            for y in range(point.y, point.y + box.size.d):
+                for z in range(point.z, point.z + box.size.h):
                     if self.used_space_map[x][y][z]: 
                         return False
         return True
@@ -253,7 +250,6 @@ class Packing:
         positioned_box = PositionedBox(box, point)
         self.positioned_boxes.append(positioned_box)
         self.total_weight += box.weight
-        # TODO: flip h and d?
         self.used_space.add(box, point)
 
     def can_be_added(self, box: Box, point: Point) -> bool:
@@ -263,8 +259,7 @@ class Packing:
             return False
         
         # does the box exceed the container boundaries
-        # TODO: flip h and d?
-        corner = Point(point.x + box.size.w, point.y + box.size.h, point.z + box.size.d)
+        corner = Point(point.x + box.size.w, point.y + box.size.d, point.z + box.size.h)
         if corner.x >= self.container.size.w or corner.y >= self.container.size.h or corner.z >= self.container.size.d:
             return False
         

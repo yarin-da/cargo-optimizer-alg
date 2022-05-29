@@ -10,6 +10,7 @@ from matplotlib import container
 from definitions import *
 
 
+# TODO: handle floating number values (round up/down)
 # TODO: Packing list order matters? i.e. order of packing (Algorithm 2 output)
 
 
@@ -123,10 +124,9 @@ def find_best_point(box: Box, potential_points: list[Point], packing: Packing) -
 def update_potential_points(box: Box, point: Point, potential_points: list[Point]) -> None:
     potential_points.remove(point)
     # add new potential points 
-    # TODO: flip h and d?
     potential_points.append(Point(point.x + box.size.w, point.y, point.z))
-    potential_points.append(Point(point.x, point.y + box.size.h, point.z))
-    potential_points.append(Point(point.x, point.y, point.z + box.size.d))
+    potential_points.append(Point(point.x, point.y + box.size.d, point.z))
+    potential_points.append(Point(point.x, point.y, point.z + box.size.h))
 
 
 # Algorithm 2
@@ -213,10 +213,9 @@ def main():
             input_data = in_file.read()
             parsed_input = parse_input(input_data)
             result = pack(parsed_input)
-            print('finished!')
-            result_json = result.to_json()
-            result_string = json.dumps(result_json, indent=2, sort_keys=False)
+            result_string = json.dumps(result, indent=2, sort_keys=False)
             write_result_to_file(result_string)
+            print('finished!')
     except Exception as e:
         print('received an exception', e)
         traceback.print_exc()
