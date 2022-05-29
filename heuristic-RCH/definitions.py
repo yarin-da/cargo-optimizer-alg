@@ -121,7 +121,6 @@ class Combination:
         b_size = self.second.size
         bw, bh, bd = b_size.w, b_size.h, b_size.d
 
-        # TODO: flip h and d?
         if self.combination_type == CombinationType.WH_LOWER:
             self.first.set_position(Point(x, y, z))
             self.second.set_position(Point(x, y + ad, z))
@@ -227,7 +226,6 @@ class Box:
         stackable = box_a.stackable and box_b.stackable
         rotations = box_a.rotations.intersection(box_b.rotations)
 
-        # TODO: flip h and d?
         # size depends on the type of combination
         if combination.combination_type in [CombinationType.WH_LOWER, CombinationType.WH_HIGHER]:
             size = Size(box_a.size.w, box_a.size.h, box_a.size.d + box_b.size.d)
@@ -248,11 +246,9 @@ class OccupiedSpace(Exception):
 class UsedSpace:
     def __init__(self, size: Size):
         self.size = size
-        # TODO: flip h and d?
         self.used_space_map = [[[False for _ in range(size.h)] for _ in range(size.d)] for _ in range(size.w)]
 
     def add(self, box: Box, point: Point) -> None:
-        # TODO: flip h and d?
         for x in range(point.x, point.x + box.size.w):
             for y in range(point.y, point.y + box.size.d):
                 for z in range(point.z, point.z + box.size.h):
@@ -262,7 +258,6 @@ class UsedSpace:
                         raise OccupiedSpace(f'occupied:: x={x} y={y} z={z} type={box.box_type}')
 
     def can_be_added(self, box: Box, point: Point) -> bool:
-        # TODO: flip h and d?
         try:
             for x in range(point.x, point.x + box.size.w):
                 for y in range(point.y, point.y + box.size.d):
@@ -296,7 +291,6 @@ class Packing:
             return False
         
         # does the box exceed the container boundaries
-        # TODO: flip h and d?
         corner = Point(point.x + box.size.w, point.y + box.size.d, point.z + box.size.h)
         if corner.x >= self.container.size.w or corner.y >= self.container.size.d or corner.z >= self.container.size.h:
             return False
