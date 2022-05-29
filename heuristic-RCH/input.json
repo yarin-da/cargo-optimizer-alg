@@ -17,6 +17,18 @@
             "profit": 100,
             "canRotate": true,
             "canStackAbove": false
+        },
+        {
+            "type": "glass",
+            "height": 2,
+            "width": 2,
+            "depth": 3,
+            "weight": 5,
+            "amount": 5,
+            "priority": 5,
+            "profit": 100,
+            "canRotate": true,
+            "canStackAbove": false
         }
     ]
 }

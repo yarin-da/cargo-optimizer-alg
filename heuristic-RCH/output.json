@@ -4,32 +4,92 @@
     "height": 6,
     "depth": 6
   },
+  "packages": [
+    {
+      "type": "glass",
+      "width": 3,
+      "height": 2,
+      "depth": 2
+    },
+    {
+      "type": "jewelry",
+      "width": 2,
+      "height": 3,
+      "depth": 1
+    }
+  ],
   "solution": [
     {
-      "type": "combined",
+      "type": "glass",
       "x": 0,
       "y": 0,
       "z": 0,
+      "rotation-x": 90,
+      "rotation-y": 90,
+      "rotation-z": 0
+    },
+    {
+      "type": "glass",
+      "x": 0,
+      "y": 0,
+      "z": 2,
       "rotation-x": 0,
+      "rotation-y": 90,
+      "rotation-z": 0
+    },
+    {
+      "type": "glass",
+      "x": 0,
+      "y": 2,
+      "z": 2,
+      "rotation-x": 90,
+      "rotation-y": 0,
+      "rotation-z": 90
+    },
+    {
+      "type": "glass",
+      "x": 2,
+      "y": 2,
+      "z": 2,
+      "rotation-x": 90,
+      "rotation-y": 0,
+      "rotation-z": 90
+    },
+    {
+      "type": "glass",
+      "x": 0,
+      "y": 2,
+      "z": 0,
+      "rotation-x": 90,
+      "rotation-y": 90,
+      "rotation-z": 0
+    },
+    {
+      "type": "jewelry",
+      "x": 3,
+      "y": 2,
+      "z": 0,
+      "rotation-x": 90,
       "rotation-y": 0,
       "rotation-z": 0
     },
     {
-      "type": "combined",
-      "x": 0,
-      "y": 0,
-      "z": 3,
+      "type": "jewelry",
+      "x": 4,
+      "y": 2,
+      "z": 2,
       "rotation-x": 90,
       "rotation-y": 0,
-      "rotation-z": 0
-    }
-  ],
-  "packages": [
+      "rotation-z": 90
+    },
     {
-      "type": "combined",
-      "width": 4,
-      "height": 3,
-      "depth": 1
+      "type": "jewelry",
+      "x": 0,
+      "y": 4,
+      "z": 0,
+      "rotation-x": 0,
+      "rotation-y": 90,
+      "rotation-z": 0
     }
   ]
 }

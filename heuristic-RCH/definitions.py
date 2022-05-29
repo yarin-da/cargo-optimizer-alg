@@ -112,7 +112,34 @@ class Combination:
     def __init__(self, first: Box, second: Box, combination_type: CombinationType):
         self.first = first
         self.second = second
-        self.combination_type = combination_type
+        self.combination_type = combination_type         
+
+    def set_position(self, position: Point):
+        x, y, z = position.x, position.y, position.z
+        a_size = self.first.size
+        aw, ah, ad = a_size.w, a_size.h, a_size.d
+        b_size = self.second.size
+        bw, bh, bd = b_size.w, b_size.h, b_size.d
+
+        # TODO: flip h and d?
+        if self.combination_type == CombinationType.WH_LOWER:
+            self.first.set_position(Point(x, y, z))
+            self.second.set_position(Point(x, y, z + ad))
+        elif self.combination_type == CombinationType.WD_LOWER:
+            self.first.set_position(Point(x, y, z))
+            self.second.set_position(Point(x, y + ah, z))
+        elif self.combination_type == CombinationType.HD_LOWER:
+            self.first.set_position(Point(x, y, z))
+            self.second.set_position(Point(x + aw, y, z))
+        elif self.combination_type == CombinationType.WH_HIGHER:
+            self.first.set_position(Point(x, y, z + bd))
+            self.second.set_position(Point(x, y, z))
+        elif self.combination_type == CombinationType.WD_HIGHER:
+            self.first.set_position(Point(x, y + bh, z))
+            self.second.set_position(Point(x, y, z))
+        else:
+            self.first.set_position(Point(x + bw, y, z))
+            self.second.set_position(Point(x, y, z))
 
 
 class Box:
@@ -133,7 +160,8 @@ class Box:
         rotations: set[RotationType], # C4
         stackable: bool, # C5
         combination: Combination = None,
-        customer_code: int = 1 # C8
+        customer_code: int = 1, # C8
+        position: Point = None,
     ):
         self.box_type = box_type
         self.size = size
@@ -143,6 +171,7 @@ class Box:
         self.stackable = stackable
         self.combination = combination
         self.customer_code = customer_code
+        self.position = position
         self.volume = size.w * size.h * size.d
         # TODO: calculate alpha
         alpha = weight / 1
@@ -182,6 +211,11 @@ class Box:
             self.rotation_x.add(90)
             self.rotation_y.add(90)
 
+    def set_position(self, position: Point):
+        self.position = position
+        if self.combination is not None:
+            self.combination.set_position(position)
+
     # create a new box by combining two other boxes
     @classmethod
     def from_boxes(cls, combination: Combination):
@@ -193,22 +227,17 @@ class Box:
         stackable = box_a.stackable and box_b.stackable
         rotations = box_a.rotations.intersection(box_b.rotations)
 
+        # TODO: flip h and d?
         # size depends on the type of combination
         if combination.combination_type in [CombinationType.WH_LOWER, CombinationType.WH_HIGHER]:
-            size = Size(box_a.size.w, box_a.size.d + box_b.size.d, box_a.size.h)
+            size = Size(box_a.size.w, box_a.size.h, box_a.size.d + box_b.size.d)
         elif combination.combination_type in [CombinationType.WD_LOWER, CombinationType.WD_HIGHER]:
-            size = Size(box_a.size.w, box_a.size.d, box_a.size.h + box_b.size.h)
+            size = Size(box_a.size.w, box_a.size.h + box_b.size.h, box_a.size.d)
         else:
-            size = Size(box_a.size.w + box_b.size.w, box_a.size.d, box_a.size.h)
+            size = Size(box_a.size.w + box_b.size.w, box_a.size.h, box_a.size.d)
 
         # call constructor
         return cls('combined', size, weight, priority, rotations, stackable, combination)
-
-
-class PositionedBox:
-    def __init__(self, box: Box, point: Point):
-        self.box = box
-        self.point = point
 
 
 class OccupiedSpace(Exception):
@@ -222,18 +251,20 @@ class UsedSpace:
         self.used_space_map = [[[False for _ in range(size.d)] for _ in range(size.h)] for _ in range(size.w)]
 
     def add(self, box: Box, point: Point) -> None:
+        # TODO: flip h and d?
         for x in range(point.x, point.x + box.size.w):
-            for y in range(point.y, point.y + box.size.d):
-                for z in range(point.z, point.z + box.size.h):
+            for y in range(point.y, point.y + box.size.h):
+                for z in range(point.z, point.z + box.size.d):
                     if not self.used_space_map[x][y][z]:
                         self.used_space_map[x][y][z] = True
                     else:
                         raise OccupiedSpace(f'occupied:: x={x} y={y} z={z} type={box.box_type}')
 
     def can_be_added(self, box: Box, point: Point) -> bool:
+        # TODO: flip h and d?
         for x in range(point.x, point.x + box.size.w):
-            for y in range(point.y, point.y + box.size.d):
-                for z in range(point.z, point.z + box.size.h):
+            for y in range(point.y, point.y + box.size.h):
+                for z in range(point.z, point.z + box.size.d):
                     if self.used_space_map[x][y][z]: 
                         return False
         return True
@@ -242,14 +273,16 @@ class UsedSpace:
 class Packing:
     def __init__(self, container: Container):
         self.container = container
-        self.positioned_boxes = []
+        self.boxes = []
         self.total_weight = 0
+        self.total_priority = 0
         self.used_space = UsedSpace(container.size)
 
     def add(self, box: Box, point: Point) -> None:
-        positioned_box = PositionedBox(box, point)
-        self.positioned_boxes.append(positioned_box)
+        box.set_position(point)
+        self.boxes.append(box)
         self.total_weight += box.weight
+        self.total_priority += box.priority
         self.used_space.add(box, point)
 
     def can_be_added(self, box: Box, point: Point) -> bool:
@@ -259,7 +292,8 @@ class Packing:
             return False
         
         # does the box exceed the container boundaries
-        corner = Point(point.x + box.size.w, point.y + box.size.d, point.z + box.size.h)
+        # TODO: flip h and d?
+        corner = Point(point.x + box.size.w, point.y + box.size.h, point.z + box.size.d)
         if corner.x >= self.container.size.w or corner.y >= self.container.size.h or corner.z >= self.container.size.d:
             return False
         
@@ -298,10 +332,18 @@ class PackingInput:
                 self.boxes.append(box)
 
 
+def get_all_real_boxes(box: Box) -> list[Box]:
+    if box.combination is None:
+        return [box]
+    a_children = get_all_real_boxes(box.combination.first)
+    b_children = get_all_real_boxes(box.combination.second)
+    return a_children + b_children
+
+
 class PackingResult:
     def __init__(self, error: str = None, packing: Packing = None):
         self.error = error
-        self.packing = packing
+        self.packing = packing     
 
     def to_json(self):
         json_data = {}
@@ -314,22 +356,24 @@ class PackingResult:
                 "height": container_size.h,
                 "depth": container_size.d
             }
-            positioned_boxes = self.packing.positioned_boxes
+            boxes = self.packing.boxes
             package_types = {}
-            json_data['solution'] = []
-            for b in positioned_boxes:
-                box_type = b.box.box_type
-                if box_type not in package_types:
-                    package_types[box_type] = b.box
-                json_data['solution'].append({
-                    "type": box_type,
-                    "x": b.point.x,
-                    "y": b.point.y,
-                    "z": b.point.z,
-                    "rotation-x": b.box.rotation_x.angle,
-                    "rotation-y": b.box.rotation_y.angle, 
-                    "rotation-z": b.box.rotation_z.angle
-                })
+            solution = []
+            for block in boxes:
+                real_boxes = get_all_real_boxes(block)
+                for box in real_boxes:
+                    box_type = box.box_type
+                    if box_type not in package_types:
+                        package_types[box_type] = box
+                    solution.append({
+                        "type": box_type,
+                        "x": box.position.x,
+                        "y": box.position.y,
+                        "z": box.position.z,
+                        "rotation-x": box.rotation_x.angle,
+                        "rotation-y": box.rotation_y.angle, 
+                        "rotation-z": box.rotation_z.angle
+                    })
             json_data['packages'] = []
             for key in package_types.keys():
                 box = package_types[key]
@@ -340,4 +384,5 @@ class PackingResult:
                     "depth": box.size.d
                 })
             
+        json_data['solution'] = solution
         return json_data

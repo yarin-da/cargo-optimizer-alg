@@ -39,7 +39,10 @@ def combine(a: Box, b: Box, common_dims: list[int]) -> list[Box]:
         else:
             combination_type = random.choice([CombinationType.HD_LOWER, CombinationType.HD_HIGHER])
 
-    combination = Combination(a, b, combination_type)
+    if combination_type in [CombinationType.WH_LOWER, CombinationType.WD_LOWER, CombinationType.HD_LOWER]:
+        combination = Combination(a, b, combination_type)
+    else: 
+        combination = Combination(b, a, combination_type)
     return Box.from_boxes(combination)
 
 
@@ -124,9 +127,10 @@ def find_best_point(box: Box, potential_points: list[Point], packing: Packing) -
 def update_potential_points(box: Box, point: Point, potential_points: list[Point]) -> None:
     potential_points.remove(point)
     # add new potential points 
+    # TODO: flip h and d?
     potential_points.append(Point(point.x + box.size.w, point.y, point.z))
-    potential_points.append(Point(point.x, point.y + box.size.d, point.z))
-    potential_points.append(Point(point.x, point.y, point.z + box.size.h))
+    potential_points.append(Point(point.x, point.y + box.size.h, point.z))
+    potential_points.append(Point(point.x, point.y, point.z + box.size.d))
 
 
 # Algorithm 2
