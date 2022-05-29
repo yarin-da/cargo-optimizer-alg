@@ -1,6 +1,5 @@
 import random
 from enum import Enum, unique, auto
-from tkinter.tix import DECREASING
 
 
 DEBUG_MODE = True
@@ -21,6 +20,9 @@ class Point:
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y and self.z == other.z
 
+    def __str__(self):
+        return f'Point(x={self.x}, y={self.y}, z={self.z})'
+
 
 class Size:
     def __init__(self, width: int, height: int, depth: int):
@@ -30,6 +32,9 @@ class Size:
 
     def __eq__(self, other):
         return self.w == other.w and self.h == other.h and self.d == other.d
+
+    def __str__(self):
+        return f'Size(w={self.w}, h={self.h}, d={self.d})'
 
 
 class Container:
@@ -268,6 +273,25 @@ class UsedSpace:
         except Exception as e:
             raise e
 
+    def vertical_projection(self, point: Point) -> Point:
+        x, y, z = point.x, point.y, point.z
+        if x >= self.size.w or y >= self.size.d or z >= self.size.h: return None
+        
+        if self.used_space_map[x][y][z]:
+            return point
+        while z > 0:
+            if self.used_space_map[x][y][z - 1]: break
+            z -= 1
+        return Point(x, y, z)
+
+    def get_support_score(self, box: Box, point: Point) -> int:
+        if point.z == 0: return box.size.w * box.size.d
+        count = 0
+        for x in range(point.x, point.x + box.size.w):
+            for y in range(point.y, point.y + box.size.d):
+                if self.used_space_map[x][y][point.z - 1]: count += 1
+        return count
+
 
 class Packing:
     def __init__(self, container: Container):
@@ -277,12 +301,30 @@ class Packing:
         self.total_priority = 0
         self.used_space = UsedSpace(container.size)
 
-    def add(self, box: Box, point: Point) -> None:
+    def add(self, box: Box, point: Point, potential_points: list[Point]) -> None:
         box.set_position(point)
         self.boxes.append(box)
         self.total_weight += box.weight
         self.total_priority += box.priority
         self.used_space.add(box, point)
+
+        # add new potential points 
+        potential_points.remove(point)
+
+        corner_w = Point(point.x + box.size.w, point.y, point.z)
+        projected_corner_w = self.used_space.vertical_projection(corner_w)
+        if projected_corner_w is not None:
+            potential_points.append(projected_corner_w)
+
+        corner_d = Point(point.x, point.y + box.size.d, point.z)
+        projected_corner_d = self.used_space.vertical_projection(corner_d)
+        if projected_corner_d is not None:
+            potential_points.append(projected_corner_d)
+
+        corner_h = Point(point.x, point.y, point.z + box.size.h)
+        projected_corner_h = self.used_space.vertical_projection(corner_h)
+        if projected_corner_h is not None:
+            potential_points.append(projected_corner_h)
 
     def can_be_added(self, box: Box, point: Point) -> bool:
         # does the box exceed the container weight limit
@@ -292,9 +334,9 @@ class Packing:
         
         # does the box exceed the container boundaries
         corner = Point(point.x + box.size.w, point.y + box.size.d, point.z + box.size.h)
-        if corner.x >= self.container.size.w or corner.y >= self.container.size.d or corner.z >= self.container.size.h:
+        if corner.x > self.container.size.w or corner.y > self.container.size.d or corner.z > self.container.size.h:
             return False
-        
+
         # does the box overlap another box
         if not self.used_space.can_be_added(box, point):
             return False
@@ -304,9 +346,14 @@ class Packing:
         
         return True
 
+    def get_support_score(self, box: Box, point: Point) -> int:
+        return self.used_space.get_support_score(box, point)
+
 
 class PackingInput:
     def __init__(self, json_data):
+        self.original_json = json_data
+
         # init container
         container = json_data['container']
         container_size = Size(container['width'], container['height'], container['depth'])
@@ -316,14 +363,14 @@ class PackingInput:
         self.boxes = []
         packages = json_data['packages']
         for pkg in packages:
+            # convert input to correct types (incase we get json where 'width' is a string for example)
             amount = int(pkg['amount'])
+            canRotate = pkg['canRotate'] if type(pkg['canRotate']) == bool else pkg['canRotate'].lower() == 'true'
+            canStackAbove = pkg['canStackAbove'] if type(pkg['canStackAbove']) == bool else pkg['canStackAbove'].lower() == 'true'
+            width, height, depth = int(pkg['width']), int(pkg['height']), int(pkg['depth'])
+            priority = int(pkg['priority'])
+            weight = int(pkg['weight'])
             for _ in range(amount):
-                canRotate = pkg['canRotate'] if type(pkg['canRotate']) == bool else pkg['canRotate'].lower() == 'true'
-                canStackAbove = pkg['canStackAbove'] if type(pkg['canStackAbove']) == bool else pkg['canStackAbove'].lower() == 'true'
-                width, height, depth = int(pkg['width']), int(pkg['height']), int(pkg['depth'])
-                priority = int(pkg['priority'])
-                weight = int(pkg['weight'])
-
                 box = Box(
                     box_type=pkg['type'],
                     size=Size(width, height, depth),
@@ -346,9 +393,10 @@ def get_all_real_boxes(box: Box) -> list[Box]:
 
 
 class PackingResult:
-    def __init__(self, error: str = None, packing: Packing = None):
+    def __init__(self, error: str = None, packing_input: PackingInput = None, packing: Packing = None):
         self.error = error
-        self.packing = packing     
+        self.packing = packing
+        self.packing_input = packing_input  
 
     def to_json(self):
         json_data = {}
@@ -361,16 +409,24 @@ class PackingResult:
                 "height": container_size.h,
                 "depth": container_size.d
             }
+            
+            packages = self.packing_input.original_json['packages']
+            json_data['packages'] = []
+            for pkg in packages:
+                json_data['packages'].append({
+                    "type": pkg['type'],
+                    "width": pkg['width'],
+                    "height": pkg['height'],
+                    "depth": pkg['depth']
+                })
+            
+            json_data['solution'] = []
             boxes = self.packing.boxes
-            package_types = {}
-            solution = []
             for block in boxes:
                 real_boxes = get_all_real_boxes(block)
                 for box in real_boxes:
                     box_type = box.box_type
-                    if box_type not in package_types:
-                        package_types[box_type] = box
-                    solution.append({
+                    json_data['solution'].append({
                         "type": box_type,
                         "x": box.position.x,
                         "y": box.position.y,
@@ -379,15 +435,5 @@ class PackingResult:
                         "rotation-y": box.rotation_y.angle, 
                         "rotation-z": box.rotation_z.angle
                     })
-            json_data['packages'] = []
-            for key in package_types.keys():
-                box = package_types[key]
-                json_data['packages'].append({
-                    "type": key,
-                    "width": box.size.w,
-                    "height": box.size.h,
-                    "depth": box.size.d
-                })
-            
-        json_data['solution'] = solution
+
         return json_data

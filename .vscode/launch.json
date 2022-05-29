@@ -5,10 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Heuristic RCH",
+            "name": "RCH - Debug - Server",
             "type": "python",
             "request": "launch",
             "program": "./heuristic-rch/server.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "RCH - Debug - Local",
+            "type": "python",
+            "request": "launch",
+            "program": "./heuristic-rch/rch.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

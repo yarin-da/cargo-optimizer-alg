@@ -2,11 +2,10 @@
 # https://www.researchgate.net/publication/355421342_An_optimization_approach_for_a_complex_real-life_container_loading_problem
 
 
+import copy
 import traceback
 import random
 import json
-
-from matplotlib import container
 from definitions import *
 
 
@@ -106,30 +105,25 @@ def perturb_phase2(boxes: list[Box]) -> None:
 def is_better_fit_point(
     a: Point,
     b: Point,
-    box: Box
+    box: Box,
+    packing: Packing
 ) -> bool:
     # TODO: better fit point
     #    i.e. best_point is None OR larger proportion of the contact surface with the underlying item is used
     #    FALL BACK to x value comparison (in case of tie)
-    if b is None:
-        return True
-    return True
+    if b is None: return True
+    diff = packing.get_support_score(box, a) - packing.get_support_score(box, b)
+    if diff > 0: return True
+    if diff < 0: return False
+    return a.x < b.x
 
 
 def find_best_point(box: Box, potential_points: list[Point], packing: Packing) -> Point:
     best_point = None
     for point in potential_points:
-        if packing.can_be_added(box, point) and is_better_fit_point(point, best_point, box):
+        if packing.can_be_added(box, point) and is_better_fit_point(point, best_point, box, packing):
             best_point = point
     return best_point
-
-
-def update_potential_points(box: Box, point: Point, potential_points: list[Point]) -> None:
-    potential_points.remove(point)
-    # add new potential points 
-    potential_points.append(Point(point.x + box.size.w, point.y, point.z))
-    potential_points.append(Point(point.x, point.y + box.size.d, point.z))
-    potential_points.append(Point(point.x, point.y, point.z + box.size.h))
 
 
 # Algorithm 2
@@ -142,8 +136,7 @@ def construct_packing(boxes: list[Box], container: Container) -> Packing:
     for box in boxes: # foreach item i in L
         best_point = find_best_point(box, potential_points, packing)
         if best_point is not None:
-            packing.add(box, best_point)
-            update_potential_points(box, best_point, potential_points)
+            packing.add(box, best_point, potential_points)
         else:
             # The insertion of box has failed
             retry_list.append(box)
@@ -154,8 +147,7 @@ def construct_packing(boxes: list[Box], container: Container) -> Packing:
         box.rotate()
         best_point = find_best_point(box, potential_points, packing)
         if best_point is not None:
-            packing.add(box, best_point)
-            update_potential_points(box, best_point, potential_points)
+            packing.add(box, best_point, potential_points)
     
     return packing
 
@@ -163,10 +155,13 @@ def construct_packing(boxes: list[Box], container: Container) -> Packing:
 # Algorithm 1
 # Randomized Constructive Heuristic
 def rch(packing_input: PackingInput) -> PackingResult:
-    container = packing_input.container
-    boxes = packing_input.boxes
+    input_container = packing_input.container
+    input_boxes = packing_input.boxes
     packing_options = []
     for _ in range(ALGORITHM_REPEAT_COUNT): # iteration n=1 to N
+        container = copy.deepcopy(input_container)
+        boxes = copy.deepcopy(input_boxes)
+
         # pre-process phase (section 4.2)
         if not chance(SKIP_COMBINE_PROBABILITY):
             boxes = preprocess_boxes(boxes)
@@ -183,7 +178,7 @@ def rch(packing_input: PackingInput) -> PackingResult:
         # TODO: check if packing is infeasible
 
     # TODO: return all packings
-    result = PackingResult(packing=packing_options[0])
+    result = PackingResult(packing_input=packing_input, packing=packing_options[0])
     return result
     
 
