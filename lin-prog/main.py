@@ -210,10 +210,12 @@ class EMS:
 #####################
 
 
-def parse_json_input(input_data):
+def parse_json_input(input_data, m):
     result = {}
     result['packages'] = []
     boxes = []
+    s_list = []
+    boxes_counter = 0
     for package in input_data['packages']:
         result['packages'].append({
             'type': package['type'],
@@ -232,11 +234,46 @@ def parse_json_input(input_data):
         canRotate = package['canRotate']
         canStackAbove = package['canStackAbove']
 
-        package_size = (package['height'], package['width'], package['depth'])
+        width = package['width']
+        height = package['height']
+        depth = package['depth']
+        package_size = (height, width, depth)
         package_type = package['type']
-        boxes += [Box(size=package_size, id=f'{package_type}-{i}', weight=weight, priority=priority, profit=profit,
-                      can_roat=canRotate, can_down=canStackAbove,
-                      nosort=True) for i in range(package['amount'])]
+        if canRotate:
+            for i in range(package['amount']):
+                boxes += [Box(size=package_size, id=f'{package_type}-{i}--{0}', weight=weight, priority=priority,
+                             profit=profit, can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                boxes += [Box(size=(width, depth, height), id=f'{package_type}-{i}--{1}', weight=weight,
+                             priority=priority, profit=profit,
+                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                boxes += [Box(size=(width, height, depth), id=f'{package_type}-{i}--{2}', weight=weight,
+                             priority=priority, profit=profit,
+                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                boxes += [Box(size=(height, depth, width), id=f'{package_type}-{i}--{3}', weight=weight,
+                             priority=priority, profit=profit,
+                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                boxes += [Box(size=(depth, height, width), id=f'{package_type}-{i}--{4}', weight=weight,
+                             priority=priority, profit=profit,
+                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                boxes += [Box(size=(depth, width, height), id=f'{package_type}-{i}--{5}', weight=weight,
+                             priority=priority, profit=profit,
+                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+
+                for j in range(6):
+                    s_list.append(m.add_var(name="s_" + str(boxes_counter), var_type=BINARY))
+                    boxes_counter += 1
+
+                for index in range(6):
+                    m += s_list[boxes_counter - index - 1] <= 1
+
+        else:
+            boxes += [Box(size=package_size, id=f'{package_type}-{i}', weight=weight, priority=priority, profit=profit,
+                          can_roat=canRotate, can_down=canStackAbove,
+                          nosort=True) for i in range(package['amount'])]
+
+            for i in range(package['amount']):
+                s_list.append(m.add_var(name="s_" + str(boxes_counter), var_type=BINARY))
+                boxes_counter += 1
 
     container_data = input_data['container']
     maxWeight = container_data['maxWeight']
@@ -252,7 +289,7 @@ def parse_json_input(input_data):
     # result <-- the object that we'd finally return to the client
     # container <-- an object that contains the dimensions of the container
     # boxes <-- an array of Boxes
-    return result, container, boxes
+    return result, container, boxes, s_list
 
 
 def generateBox():
@@ -273,7 +310,7 @@ if __name__ == '__main__':
         json_file = open(filepath, 'r')
         raw_data = json_file.read()
         json_data = json.loads(raw_data)
-        result, container, boxes = parse_json_input(json_data)
+        result, container, boxes, s_list = parse_json_input(json_data, m)
         n = len(boxes)
     except Exception as e:
         print('received exception', e)
@@ -286,7 +323,7 @@ if __name__ == '__main__':
     b_list = [m.add_var(name="b_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     c_list = [m.add_var(name="c_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     d_list = [m.add_var(name="d_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
-    #e_list = [m.add_var(name="e_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
+    # e_list = [m.add_var(name="e_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
 
     e_list = []
     # e_ij is a binary variable which is equal to 1 if box i is placed on the top of the box j.
@@ -294,13 +331,13 @@ if __name__ == '__main__':
     for i in range(n):
         for j in range(i + 1, n):
             if not boxes[j].get_canStackAbove():
-                m.add_var(name="e_" + str(i) + "_" + str(j), lb=0, ub=0) # e_ij = 0
+                m.add_var(name="e_" + str(i) + "_" + str(j), lb=0, ub=0)  # e_ij = 0
             else:
-                m.add_var(name="e_" + str(i) + "_" + str(j), var_type=BINARY) # e_ij binary
+                m.add_var(name="e_" + str(i) + "_" + str(j), var_type=BINARY)  # e_ij binary
 
     f_list = [m.add_var(name="f_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     #  A binary variable which is equal to 1 if box i is placed in the container
-    s_list = [m.add_var(name="s_" + str(i), var_type=BINARY) for i in range(n)]
+    #s_list = [m.add_var(name="s_" + str(i), var_type=BINARY) for i in range(n)]
 
     # Profit values.
     v_list = [boxes[i].get_profit() for i in range(n)]
