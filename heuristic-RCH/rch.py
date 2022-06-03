@@ -132,6 +132,7 @@ def construct_packing(boxes: list[Box], container: Container) -> Packing:
         best_point = find_best_point(box, potential_points, packing)
         if best_point is not None:
             # print_debug(f'box={box.size} added at {best_point}')
+            box.set_position(best_point)
             packing.add(box, best_point, potential_points)
         else:
             # The insertion of box has failed
@@ -143,6 +144,7 @@ def construct_packing(boxes: list[Box], container: Container) -> Packing:
         box.rotate()
         best_point = find_best_point(box, potential_points, packing)
         if best_point is not None:
+            box.set_position(best_point)
             packing.add(box, best_point, potential_points)
     
     return packing

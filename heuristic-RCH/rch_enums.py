@@ -21,24 +21,29 @@ class SortingType(Enum):
     DECREASING_CUSTOMER_CODE = auto()
 
 
-'''
-box=(w,h,d)
-rotations = [
-    [ (w, h, d), 0,  0,  0  ], # NONE
-    [ (w, d, h), 90, 0,  0  ], # X
-    [ (h, w, d), 0,  0,  90 ], # Z
-    [ (h, d, w), 90, 0,  90 ], # XZ
-    [ (d, h, w), 0,  90, 0  ], # Y
-    [ (d, w, h), 90, 90, 0  ], # XY
-'''
 @unique
 class RotationType(Enum):
-    NONE = ('w', 'h', 'd')
-    W    = ('w', 'd', 'h')
-    H    = ('h', 'w', 'd')
-    WH   = ('h', 'd', 'w')
-    D    = ('d', 'h', 'w')
-    WD   = ('d', 'w', 'h')
+    # w = 0, d = 1, h = 2
+    NONE = (0, 1, 2)
+    W    = (0, 2, 1)
+    H    = (1, 0, 2)
+    WH   = (2, 0, 1)
+    D    = (2, 1, 0)
+    WD   = (1, 2, 0)
+
+    @classmethod
+    def get_rotation(cls, permutation: tuple[int, int, int]):
+        return next(x for x in list(RotationType) if x.value == permutation)
+
+    def permute(self, old_perm: tuple[object, object, object]) -> tuple[object, object, object]:
+        permutation = self.value
+        new_perm = [None, None, None]
+        for i in range(3): new_perm[i] = old_perm[permutation[i]]
+        return (new_perm[0], new_perm[1], new_perm[2])
+        
+    def rotate(self, rotation_type):
+        new_rotation = rotation_type.permute(self.value)
+        return self.get_rotation(new_rotation)
 
 
 '''
@@ -78,3 +83,11 @@ class CombinationType(Enum):
         if self.value == CombinationType.WD_HIGHER.value: return ('higher', 'h')
         if self.value == CombinationType.HD_HIGHER.value: return ('higher', 'w')
         assert_debug(False)
+    
+    def rotate(self, rotation_type: RotationType):
+        normal = ('w', 'd', 'h')
+        relation, old_common_dim = self.get_params()
+        new_perm = rotation_type.permute(normal)
+        index = new_perm.index(old_common_dim)
+        new_common_dim = normal[index]
+        return CombinationType.get_type(relation, new_common_dim)

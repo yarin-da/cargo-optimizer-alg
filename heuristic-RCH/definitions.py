@@ -4,11 +4,11 @@ import random
 
 
 DIMENSIONS = 3
-class Rotation3D: pass
-class Box: pass
 class Combination: pass
-class Point: pass
-class Size: pass
+class Rotation3D:  pass
+class Point:       pass
+class Size:        pass
+class Box:         pass
 
 
 def to_rotation3d(rotation_type: RotationType) -> Rotation3D:
@@ -38,10 +38,13 @@ class Point:
 
 
 class Size:
-    def __init__(self, width: int, depth: int, height: int):
-        self.w = width
-        self.d = depth
-        self.h = height
+    def __init__(self, dims: tuple[int, int, int]):
+        self.w = dims[0]
+        self.d = dims[1]
+        self.h = dims[2]
+
+    def to_tuple(self):
+        return (self.w, self.d, self.h)
 
     def __eq__(self, other):
         return self.w == other.w and self.h == other.h and self.d == other.d
@@ -65,28 +68,6 @@ class Rotation3D():
         self.x = x % 180
         self.y = y % 180
         self.z = z % 180
-
-    def add(self, angles): 
-        self.x = (self.x + angles[0]) % 180
-        self.y = (self.y + angles[1]) % 180
-        self.z = (self.z + angles[2]) % 180
-        return self
-    
-    def add_x(self, rotation_angle): self.x = (self.x + rotation_angle) % 180
-    def add_y(self, rotation_angle): self.y = (self.y + rotation_angle) % 180
-    def add_z(self, rotation_angle): self.z = (self.z + rotation_angle) % 180
-
-    def to_rotation_type(self):
-        angles = (self.x, self.y, self.z)
-        if angles == (90, 0, 0):   return RotationType.W
-        if angles == (0, 0, 90):   return RotationType.H
-        if angles == (90, 0, 90):  return RotationType.WH
-        if angles == (0, 90, 0):   return RotationType.D
-        if angles == (90, 90, 90): return RotationType.D
-        if angles == (90, 90, 0):  return RotationType.WD
-        if angles == (0, 90, 90):  return RotationType.WD
-        if angles == (0, 0, 0):    return RotationType.NONE
-        assert_debug(False)
 
     def __str__(self):
         return f'Rotation(x={self.x}, y={self.y}, z={self.z})'
@@ -151,37 +132,9 @@ class Combination:
             self.second.set_position(Point(x, y, z))
         
     def rotate(self, rotation_type: RotationType) -> None:
-        assert_debug(self.combination_type is not None)
         self.first.rotate(rotation_type)
-        self.second.rotate(rotation_type)
-        relation, old_common_dim = self.combination_type.get_params()
-        # TODO: rotate combination type
-        new_common_dim = None
-        
-        if old_common_dim == 'w':
-            if rotation_type == RotationType.NONE: new_common_dim = 'w'
-            elif rotation_type == RotationType.W:  new_common_dim = 'w'
-            elif rotation_type == RotationType.H:  new_common_dim = 'd'
-            elif rotation_type == RotationType.WH: new_common_dim = 'd'
-            elif rotation_type == RotationType.D:  new_common_dim = 'h'
-            elif rotation_type == RotationType.WD: new_common_dim = 'h'        
-        elif old_common_dim == 'd':
-            if rotation_type == RotationType.NONE: new_common_dim = 'd'
-            elif rotation_type == RotationType.W:  new_common_dim = 'h'
-            elif rotation_type == RotationType.H:  new_common_dim = 'w'
-            elif rotation_type == RotationType.WH: new_common_dim = 'h'
-            elif rotation_type == RotationType.D:  new_common_dim = 'd'
-            elif rotation_type == RotationType.WD: new_common_dim = 'w'        
-        elif old_common_dim == 'h':
-            if rotation_type == RotationType.NONE: new_common_dim = 'h'
-            elif rotation_type == RotationType.W:  new_common_dim = 'd'
-            elif rotation_type == RotationType.H:  new_common_dim = 'h'
-            elif rotation_type == RotationType.WH: new_common_dim = 'w'
-            elif rotation_type == RotationType.D:  new_common_dim = 'w'
-            elif rotation_type == RotationType.WD: new_common_dim = 'd'
-        combination_type = CombinationType.get_type(relation, new_common_dim)
-        print_debug(f'{self.combination_type} x {rotation_type} = {combination_type}')
-        self.combination_type = combination_type
+        self.second.rotate(rotation_type)      
+        self.combination_type = self.combination_type.rotate(rotation_type)
 
 
 class Box:
@@ -209,12 +162,13 @@ class Box:
         self.size = size
         self.weight = weight
         self.priority = priority
+        # TODO: precompute all possible permutations for each package type ahead of time
         self.rotations = rotations
         self.stackable = stackable
         self.combination = combination
         self.customer_code = customer_code
         self.position = position
-        self.rotation = Rotation3D()
+        self.rotation_type = RotationType.NONE
         self.volume = size.w * size.h * size.d
         # TODO: calculate alpha
         alpha = weight / 1
@@ -227,40 +181,16 @@ class Box:
         if self.size.d == other.size.d: common_dims.append('d')
         return common_dims
 
-    # TODO: may not be necessary
-    def update_rotation(self, x, y, z):
-        self.rotation.add((x, y, z))
-        new_rotations = set()
-        for rot in self.rotations:
-            new_rotation = to_rotation3d(rot).add((-x, -y, -z)).to_rotation_type()
-            new_rotations.add(new_rotation)
-        self.rotations = new_rotations
-
-    def rotate(self, rotation_type: RotationType = None) -> None:
-        if rotation_type is None:
-            rotation_type = random.choice(list(self.rotations))
+    def rotate(self, new_rotation_type: RotationType = None) -> None:
+        if new_rotation_type is None:
+            new_rotation_type = random.choice(list(self.rotations))
         
-        w, d, h = self.size.w, self.size.d, self.size.h
-        x_angle, y_angle, z_angle = 0, 0, 0
-        if rotation_type == RotationType.W:
-            self.size = Size(w, h, d)
-            x_angle = 90
-        elif rotation_type == RotationType.H:
-            self.size = Size(d, w, h)
-            z_angle = 90
-        elif rotation_type == RotationType.WH:
-            self.size = Size(h, w, d)
-            x_angle, z_angle = 90, 90
-        elif rotation_type == RotationType.D:
-            self.size = Size(h, d, w)
-            y_angle = 90
-        elif rotation_type == RotationType.WD:
-            self.size = Size(d, h, w)
-            x_angle, y_angle = 90, 90
+        new_dims = new_rotation_type.permute(self.size.to_tuple())
+        self.size = Size(new_dims)
+        self.rotation_type = self.rotation_type.rotate(new_rotation_type)
         
-        self.update_rotation(x_angle, y_angle, z_angle)
         if self.combination is not None:
-            self.combination.rotate(rotation_type)
+            self.combination.rotate(new_rotation_type)
             if self.position is not None:
                 self.combination.set_position(self.position)
 
@@ -282,11 +212,11 @@ class Box:
 
         # size depends on the type of combination
         if combination.combination_type in [CombinationType.WH_LOWER, CombinationType.WH_HIGHER]:
-            size = Size(box_a.size.w, box_a.size.d + box_b.size.d, box_a.size.h)
+            size = Size((box_a.size.w, box_a.size.d + box_b.size.d, box_a.size.h))
         elif combination.combination_type in [CombinationType.WD_LOWER, CombinationType.WD_HIGHER]:
-            size = Size(box_a.size.w, box_a.size.d, box_a.size.h + box_b.size.h)
+            size = Size((box_a.size.w, box_a.size.d, box_a.size.h + box_b.size.h))
         else:
-            size = Size(box_a.size.w + box_b.size.w, box_a.size.d, box_a.size.h)
+            size = Size((box_a.size.w + box_b.size.w, box_a.size.d, box_a.size.h))
 
         # call constructor
         return cls('combined', size, weight, priority, rotations, stackable, combination)
@@ -302,23 +232,12 @@ class UsedSpace:
         self.size = size
         self.used_space_map = [[[False for _ in range(size.h)] for _ in range(size.d)] for _ in range(size.w)]
 
-    def sum(self):
-        ret = 0
-        for x in range(self.size.w):
-            for y in range(self.size.d):
-                for z in range(self.size.h):
-                    if self.used_space_map[x][y][z]: ret += 1
-        return ret
-
     def add(self, box: Box, point: Point) -> None:
-        before = self.sum()
         for x in range(point.x, point.x + box.size.w):
             for y in range(point.y, point.y + box.size.d):
                 for z in range(point.z, point.z + box.size.h):
                     assert_debug(not self.used_space_map[x][y][z])
                     self.used_space_map[x][y][z] = True
-        after = self.sum()
-        assert_debug(after - before == box.volume)
 
     def can_be_added(self, box: Box, point: Point) -> bool:
         for x in range(point.x, point.x + box.size.w):
@@ -356,7 +275,6 @@ class Packing:
         self.used_volume = 0
 
     def add(self, box: Box, point: Point, potential_points: list[Point]) -> None:
-        box.set_position(point)
         self.boxes.append(box)
         self.total_weight += box.weight
         self.total_priority += box.priority
@@ -408,7 +326,7 @@ class PackingInput:
 
         # init container
         container = json_data['container']
-        container_size = Size(container['width'], container['depth'], container['height'])
+        container_size = Size((container['width'], container['depth'], container['height']))
         self.container = Container(container_size, container['maxWeight'])
         
         # init boxes
@@ -425,7 +343,7 @@ class PackingInput:
             for _ in range(amount):
                 box = Box(
                     box_type=pkg['type'],
-                    size=Size(width, depth, height),
+                    size=Size((width, depth, height)),
                     weight=weight,
                     priority=priority,
                     rotations=set(list(RotationType)) if canRotate else set([RotationType.NONE]),
@@ -492,16 +410,17 @@ class PackingResult:
                         ids.append(id(box))
                     else:
                         dup_count += 1
-                    print_debug(f'\ttype={box.box_type} pos={box.position} size={box.size} rotation={box.rotation}')
+                    print_debug(f'\ttype={box.box_type} pos={box.position} size={box.size} rotation={box.rotation_type}')
+                    rotation = to_rotation3d(box.rotation_type)
                     box_type = box.box_type
                     json_data['solution'].append({
                         "type": box_type,
                         "x": box.position.x,
                         "y": box.position.y,
                         "z": box.position.z,
-                        "rotation-x": box.rotation.x,
-                        "rotation-y": box.rotation.y, 
-                        "rotation-z": box.rotation.z
+                        "rotation-x": rotation.x,
+                        "rotation-y": rotation.y, 
+                        "rotation-z": rotation.z
                     })
             assert_debug(dup_count == 0)
         return json_data
