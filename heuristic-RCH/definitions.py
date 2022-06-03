@@ -1,25 +1,24 @@
+from rch_enums import *
+from debug_utils import *
 import random
-from enum import Enum, unique, auto
-import numpy
 
 
-DEBUG_MODE = True
 DIMENSIONS = 3
-
-
 class Rotation3D: pass
 class Box: pass
 class Combination: pass
+class Point: pass
+class Size: pass
 
 
-def print_debug(message):
-    if DEBUG_MODE:
-        print(message)
-
-
-def assert_debug(cond):
-    if not cond: 
-        print_debug('fail')
+def to_rotation3d(rotation_type: RotationType) -> Rotation3D:
+    if rotation_type == RotationType.NONE: return Rotation3D(0,  0,  0)
+    if rotation_type == RotationType.X:    return Rotation3D(90, 0,  0)
+    if rotation_type == RotationType.Z:    return Rotation3D(0,  0,  90)
+    if rotation_type == RotationType.XZ:   return Rotation3D(90, 0,  90)
+    if rotation_type == RotationType.Y:    return Rotation3D(0,  90, 0)
+    if rotation_type == RotationType.XY:   return Rotation3D(90, 90, 0)
+    assert_debug(False)
 
 
 class Point:
@@ -60,54 +59,6 @@ class Container:
         self.weight_limit = weight_limit
 
 
-@unique
-class PerturbOrder(Enum):
-    VOLUME = auto()
-    WEIGHT = auto()
-
-
-@unique
-class PerturbRotation(Enum):
-    INDIVIDUAL = auto()
-    IDENTICAL  = auto()
-
-
-@unique
-class SortingType(Enum):
-    DECREASING_TAXABILITY    = auto()
-    DECREASING_PRIORITY      = auto()
-    DECREASING_CUSTOMER_CODE = auto()
-
-
-'''
-box=(w,h,d)
-rotations = [
-    [ (w, h, d), 0,  0,  0  ], # NONE
-    [ (w, d, h), 90, 0,  0  ], # X
-    [ (h, w, d), 0,  0,  90 ], # Z
-    [ (h, d, w), 90, 0,  90 ], # XZ
-    [ (d, h, w), 0,  90, 0  ], # Y
-    [ (d, w, h), 90, 90, 0  ], # XY
-'''
-@unique
-class RotationType(Enum):
-    NONE = auto()
-    X    = auto()
-    Z    = auto()
-    XZ   = auto()
-    Y    = auto()
-    XY   = auto()
-
-    def to_rotation3d(self):
-        if self.value == RotationType.NONE.value: return Rotation3D(0,  0,  0)
-        if self.value == RotationType.X.value:    return Rotation3D(90, 0,  0)
-        if self.value == RotationType.Z.value:    return Rotation3D(0,  0,  90)
-        if self.value == RotationType.XZ.value:   return Rotation3D(90, 0,  90)
-        if self.value == RotationType.Y.value:    return Rotation3D(0,  90, 0)
-        if self.value == RotationType.XY.value:   return Rotation3D(90, 90, 0)
-        assert_debug(False)
-
-
 # rotation in degrees
 class Rotation3D():
     def __init__(self, x: int = 0, y: int = 0, z: int = 0):
@@ -142,45 +93,6 @@ class Rotation3D():
     
     def __repr__(self):
         return f'Rotation(x={self.x}, y={self.y}, z={self.z})'
-
-
-'''
-assuming we have two boxes A, B:
-each combination type notes which two dimensions are equal (W - width, H - height, D - depth)
-also, lower/higher note the position of A relative to B
-e.g. (A, B, WH_LOWER): 
-  A and B are equal in width and height, thus they'll be merged along the depth
-  LOWER notes that the depth value of A is lower with respect to B
-'''
-@unique
-class CombinationType(Enum):
-    WH_LOWER  = auto()
-    WD_LOWER  = auto()
-    HD_LOWER  = auto()
-    WH_HIGHER = auto()
-    WD_HIGHER = auto()
-    HD_HIGHER = auto()
-
-    @classmethod
-    def get_type(cls, relation, common_dim):
-        if relation == 'lower':
-            if common_dim == 'd': return CombinationType.WH_LOWER
-            if common_dim == 'h': return CombinationType.WD_LOWER
-            if common_dim == 'w': return CombinationType.HD_LOWER
-        else:
-            if common_dim == 'd': return CombinationType.WH_HIGHER
-            if common_dim == 'h': return CombinationType.WD_HIGHER
-            if common_dim == 'w': return CombinationType.HD_HIGHER
-        assert_debug(False)
-
-    def get_params(self):
-        if self.value == CombinationType.WH_LOWER.value: return ('lower', 'd')
-        if self.value == CombinationType.WD_LOWER.value: return ('lower', 'h')
-        if self.value == CombinationType.HD_LOWER.value: return ('lower', 'w')
-        if self.value == CombinationType.WH_HIGHER.value: return ('higher', 'd')
-        if self.value == CombinationType.WD_HIGHER.value: return ('higher', 'h')
-        if self.value == CombinationType.HD_HIGHER.value: return ('higher', 'w')
-        assert_debug(False)
 
 
 def combine(a: Box, b: Box, common_dims: list[int], relation: str = None) -> list[Box]:
@@ -320,7 +232,7 @@ class Box:
         self.rotation.add((x, y, z))
         new_rotations = set()
         for rot in self.rotations:
-            new_rotation = rot.to_rotation3d().add((-x, -y, -z)).to_rotation_type()
+            new_rotation = to_rotation3d(rot).add((-x, -y, -z)).to_rotation_type()
             new_rotations.add(new_rotation)
         self.rotations = new_rotations
 
