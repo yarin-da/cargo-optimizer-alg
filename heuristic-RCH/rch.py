@@ -9,11 +9,13 @@ import json
 from definitions import *
 
 
+# TODO: sort packages using profit
+# TODO: sort packages by biggest plane size? (max{w*h,w*d,h*d})
 # TODO: handle floating number values (round up/down)
 # TODO: Packing list order matters? i.e. order of packing (Algorithm 2 output)
 
-
-SKIP_COMBINE_PROBABILITY = 0.5
+# TODO: change to 0.5
+SKIP_COMBINE_PROBABILITY = 0
 # TODO: (4.5): "N is potentially a large number to the order of hundreds of thousands"
 ALGORITHM_REPEAT_COUNT = 1
 REORDER_PROBABILITY = 0.5
@@ -22,39 +24,18 @@ REORDER_RATIO_LOWER_BOUND = 1 - REORDER_RATIO_OFFSET
 REORDER_RATIO_HIGHER_BOUND = 1 + REORDER_RATIO_OFFSET
 
 
-def chance(probability: float) -> bool:
+def chance(probability: float) -> bool: 
     return random.random() < probability
-
-
-def combine(a: Box, b: Box, common_dims: list[int]) -> list[Box]:
-    amount_of_common_dims = len(common_dims)
-    if amount_of_common_dims == 3:
-        combination_type = random.choice(list(CombinationType))
-    elif amount_of_common_dims == 2:
-        if 'w' in common_dims and 'h' in common_dims:
-            combination_type = random.choice([CombinationType.WH_LOWER, CombinationType.WH_HIGHER])
-        elif 'w' in common_dims and 'd' in common_dims:
-            combination_type = random.choice([CombinationType.WD_LOWER, CombinationType.WD_HIGHER])
-        else:
-            combination_type = random.choice([CombinationType.HD_LOWER, CombinationType.HD_HIGHER])
-
-    if combination_type in [CombinationType.WH_LOWER, CombinationType.WD_LOWER, CombinationType.HD_LOWER]:
-        combination = Combination(a, b, combination_type)
-    else: 
-        combination = Combination(b, a, combination_type)
-    return Box.from_boxes(combination)
 
 
 def preprocess_boxes(boxes: list[Box]) -> list[Box]:
     processed_boxes = []
     combined_boxes = []
-    iterable = reversed(range(len(boxes)))
-    for i in iterable:
-        for j in iterable:
-            if i == j:
-                continue
+    for i in range(len(boxes)):
+        for j in range(i + 1, len(boxes)):
             a = boxes[i]
             b = boxes[j]
+            if i == j or a in combined_boxes or b in combined_boxes: continue
             common_dims = a.get_common_dims(b)
             if len(common_dims) >= 2:
                 # keep track of boxes that were combined (they'll be removed from the return value)
@@ -64,6 +45,18 @@ def preprocess_boxes(boxes: list[Box]) -> list[Box]:
                 processed_boxes.append(combine(a, b, common_dims))
     # add all boxes that were not combined to the return value
     processed_boxes.extend([box for box in boxes if box not in combined_boxes])
+
+    ids = []
+    dup = 0
+    for block in processed_boxes:
+        real_boxes = get_all_real_boxes(block)
+        for box in real_boxes:
+            if id(box) not in ids:
+                ids.append(id(box))
+            else:
+                dup += 1
+    assert_debug(dup == 0)
+
     return processed_boxes
 
 
@@ -81,8 +74,7 @@ def perturb_phase1(boxes: list[Box]) -> None:
     # TODO: update possible rotations?
     perturb_rotation = random.choice(list(PerturbRotation))
     if perturb_rotation == PerturbRotation.INDIVIDUAL:
-        for box in boxes:
-            box.rotate()
+        for box in boxes: box.rotate()
     else: # IDENTICAL
         rotation_per_type = {}
         for box in boxes:
@@ -108,9 +100,6 @@ def is_better_fit_point(
     box: Box,
     packing: Packing
 ) -> bool:
-    # TODO: better fit point
-    #    i.e. best_point is None OR larger proportion of the contact surface with the underlying item is used
-    #    FALL BACK to x value comparison (in case of tie)
     if b is None: return True
     diff = packing.get_support_score(box, a) - packing.get_support_score(box, b)
     if diff > 0: return True
@@ -136,6 +125,7 @@ def construct_packing(boxes: list[Box], container: Container) -> Packing:
     for box in boxes: # foreach item i in L
         best_point = find_best_point(box, potential_points, packing)
         if best_point is not None:
+            # print_debug(f'box={box.size} added at {best_point}')
             packing.add(box, best_point, potential_points)
         else:
             # The insertion of box has failed

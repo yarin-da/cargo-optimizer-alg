@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "RCH - Debug - Test",
+            "type": "python",
+            "request": "launch",
+            "program": "./heuristic-rch/tests.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "RCH - Debug - Server",
             "type": "python",
             "request": "launch",
