@@ -13,11 +13,11 @@ class Size: pass
 
 def to_rotation3d(rotation_type: RotationType) -> Rotation3D:
     if rotation_type == RotationType.NONE: return Rotation3D(0,  0,  0)
-    if rotation_type == RotationType.X:    return Rotation3D(90, 0,  0)
-    if rotation_type == RotationType.Z:    return Rotation3D(0,  0,  90)
-    if rotation_type == RotationType.XZ:   return Rotation3D(90, 0,  90)
-    if rotation_type == RotationType.Y:    return Rotation3D(0,  90, 0)
-    if rotation_type == RotationType.XY:   return Rotation3D(90, 90, 0)
+    if rotation_type == RotationType.W:    return Rotation3D(90, 0,  0)
+    if rotation_type == RotationType.H:    return Rotation3D(0,  0,  90)
+    if rotation_type == RotationType.WH:   return Rotation3D(90, 0,  90)
+    if rotation_type == RotationType.D:    return Rotation3D(0,  90, 0)
+    if rotation_type == RotationType.WD:   return Rotation3D(90, 90, 0)
     assert_debug(False)
 
 
@@ -78,13 +78,13 @@ class Rotation3D():
 
     def to_rotation_type(self):
         angles = (self.x, self.y, self.z)
-        if angles == (90, 0, 0):   return RotationType.X
-        if angles == (0, 0, 90):   return RotationType.Z
-        if angles == (90, 0, 90):  return RotationType.XZ
-        if angles == (0, 90, 0):   return RotationType.Y
-        if angles == (90, 90, 90): return RotationType.Y
-        if angles == (90, 90, 0):  return RotationType.XY
-        if angles == (0, 90, 90):  return RotationType.XY
+        if angles == (90, 0, 0):   return RotationType.W
+        if angles == (0, 0, 90):   return RotationType.H
+        if angles == (90, 0, 90):  return RotationType.WH
+        if angles == (0, 90, 0):   return RotationType.D
+        if angles == (90, 90, 90): return RotationType.D
+        if angles == (90, 90, 0):  return RotationType.WD
+        if angles == (0, 90, 90):  return RotationType.WD
         if angles == (0, 0, 0):    return RotationType.NONE
         assert_debug(False)
 
@@ -160,25 +160,25 @@ class Combination:
         
         if old_common_dim == 'w':
             if rotation_type == RotationType.NONE: new_common_dim = 'w'
-            elif rotation_type == RotationType.X:  new_common_dim = 'w'
-            elif rotation_type == RotationType.Z:  new_common_dim = 'd'
-            elif rotation_type == RotationType.XZ: new_common_dim = 'd'
-            elif rotation_type == RotationType.Y:  new_common_dim = 'h'
-            elif rotation_type == RotationType.XY: new_common_dim = 'h'        
+            elif rotation_type == RotationType.W:  new_common_dim = 'w'
+            elif rotation_type == RotationType.H:  new_common_dim = 'd'
+            elif rotation_type == RotationType.WH: new_common_dim = 'd'
+            elif rotation_type == RotationType.D:  new_common_dim = 'h'
+            elif rotation_type == RotationType.WD: new_common_dim = 'h'        
         elif old_common_dim == 'd':
             if rotation_type == RotationType.NONE: new_common_dim = 'd'
-            elif rotation_type == RotationType.X:  new_common_dim = 'h'
-            elif rotation_type == RotationType.Z:  new_common_dim = 'w'
-            elif rotation_type == RotationType.XZ: new_common_dim = 'h'
-            elif rotation_type == RotationType.Y:  new_common_dim = 'd'
-            elif rotation_type == RotationType.XY: new_common_dim = 'w'        
+            elif rotation_type == RotationType.W:  new_common_dim = 'h'
+            elif rotation_type == RotationType.H:  new_common_dim = 'w'
+            elif rotation_type == RotationType.WH: new_common_dim = 'h'
+            elif rotation_type == RotationType.D:  new_common_dim = 'd'
+            elif rotation_type == RotationType.WD: new_common_dim = 'w'        
         elif old_common_dim == 'h':
             if rotation_type == RotationType.NONE: new_common_dim = 'h'
-            elif rotation_type == RotationType.X:  new_common_dim = 'd'
-            elif rotation_type == RotationType.Z:  new_common_dim = 'h'
-            elif rotation_type == RotationType.XZ: new_common_dim = 'w'
-            elif rotation_type == RotationType.Y:  new_common_dim = 'w'
-            elif rotation_type == RotationType.XY: new_common_dim = 'd'
+            elif rotation_type == RotationType.W:  new_common_dim = 'd'
+            elif rotation_type == RotationType.H:  new_common_dim = 'h'
+            elif rotation_type == RotationType.WH: new_common_dim = 'w'
+            elif rotation_type == RotationType.D:  new_common_dim = 'w'
+            elif rotation_type == RotationType.WD: new_common_dim = 'd'
         combination_type = CombinationType.get_type(relation, new_common_dim)
         print_debug(f'{self.combination_type} x {rotation_type} = {combination_type}')
         self.combination_type = combination_type
@@ -242,19 +242,19 @@ class Box:
         
         w, d, h = self.size.w, self.size.d, self.size.h
         x_angle, y_angle, z_angle = 0, 0, 0
-        if rotation_type == RotationType.X:
+        if rotation_type == RotationType.W:
             self.size = Size(w, h, d)
             x_angle = 90
-        elif rotation_type == RotationType.Z:
+        elif rotation_type == RotationType.H:
             self.size = Size(d, w, h)
             z_angle = 90
-        elif rotation_type == RotationType.XZ:
+        elif rotation_type == RotationType.WH:
             self.size = Size(h, w, d)
             x_angle, z_angle = 90, 90
-        elif rotation_type == RotationType.Y:
+        elif rotation_type == RotationType.D:
             self.size = Size(h, d, w)
             y_angle = 90
-        elif rotation_type == RotationType.XY:
+        elif rotation_type == RotationType.WD:
             self.size = Size(d, h, w)
             x_angle, y_angle = 90, 90
         

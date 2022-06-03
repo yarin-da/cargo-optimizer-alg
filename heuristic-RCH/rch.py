@@ -10,7 +10,11 @@ from definitions import *
 from debug_utils import *
 
 
-# TODO: after choosing a solution -> go through each box -> move it down as much as possible (if at all)
+# TODO: 
+#   after choosing a solution -> 
+#   go through each box -> 
+#   move it down as much as possible (if at all) -> 
+#   repeat until no box moved the whole iteration (because box that moved down now allows the box above it to move down as well)
 # TODO: sort packages using profit
 # TODO: sort packages by biggest plane size? (max{w*h,w*d,h*d})
 # TODO: handle floating number values (round up/down)

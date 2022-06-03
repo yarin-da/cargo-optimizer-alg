@@ -33,12 +33,12 @@ rotations = [
 '''
 @unique
 class RotationType(Enum):
-    NONE = auto()
-    X    = auto()
-    Z    = auto()
-    XZ   = auto()
-    Y    = auto()
-    XY   = auto()
+    NONE = ('w', 'h', 'd')
+    W    = ('w', 'd', 'h')
+    H    = ('h', 'w', 'd')
+    WH   = ('h', 'd', 'w')
+    D    = ('d', 'h', 'w')
+    WD   = ('d', 'w', 'h')
 
 
 '''
