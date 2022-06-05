@@ -6,24 +6,15 @@ import copy
 import traceback
 import random
 import json
-from definitions import *
+from packing import *
 from debug_utils import *
 
 
-# TODO: 
-#   after choosing a solution -> 
-#   go through each box -> 
-#   move it down as much as possible (if at all) -> 
-#   repeat until no box moved the whole iteration (because box that moved down now allows the box above it to move down as well)
-# TODO: sort packages using profit
-# TODO: sort packages by biggest plane size? (max{w*h,w*d,h*d})
-# TODO: handle floating number values (round up/down)
-# TODO: Packing list order matters? i.e. order of packing (Algorithm 2 output)
+# TODO: check weight distribution and load balacing (C2)
 
-# TODO: change to 0.5
-SKIP_COMBINE_PROBABILITY = 0
-# TODO: (4.5): "N is potentially a large number to the order of hundreds of thousands"
-ALGORITHM_REPEAT_COUNT = 1
+
+SKIP_COMBINE_PROBABILITY = 1
+ALGORITHM_REPEAT_COUNT = 150
 REORDER_PROBABILITY = 0.5
 REORDER_RATIO_OFFSET = 0.3
 REORDER_RATIO_LOWER_BOUND = 1 - REORDER_RATIO_OFFSET
@@ -41,6 +32,7 @@ def preprocess_boxes(boxes: list[Box]) -> list[Box]:
         for j in range(i + 1, len(boxes)):
             a = boxes[i]
             b = boxes[j]
+            if not a.stackable or not b.stackable: continue
             if i == j or a in combined_boxes or b in combined_boxes: continue
             common_dims = a.get_common_dims(b)
             if len(common_dims) >= 2:
@@ -52,32 +44,25 @@ def preprocess_boxes(boxes: list[Box]) -> list[Box]:
     # add all boxes that were not combined to the return value
     processed_boxes.extend([box for box in boxes if box not in combined_boxes])
 
-    ids = []
-    dup = 0
-    for block in processed_boxes:
-        real_boxes = get_all_real_boxes(block)
-        for box in real_boxes:
-            if id(box) not in ids:
-                ids.append(id(box))
-            else:
-                dup += 1
-    assert_debug(dup == 0)
-
     return processed_boxes
 
 
-def sort_boxes(boxes: list[Box]) -> None:
-    sorting_type = random.choice(list(SortingType))
-    if sorting_type == SortingType.DECREASING_TAXABILITY:
-        boxes.sort(key=lambda box: box.taxability, reverse=True)
+def sort_boxes(boxes: list[Box], sorting_type: SortingType = None) -> None:
+    if sorting_type is None:
+        sorting_type = random.choice(list(SortingType))
+    if sorting_type == SortingType.DECREASING_VOLUME:
+        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.size.volume(), box.priority, box.profit), reverse=True)
     elif sorting_type == SortingType.DECREASING_PRIORITY:
-        boxes.sort(key=lambda box: (box.priority, box.taxability), reverse=True)
+        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.priority, box.size.volume()), reverse=True)
+    elif sorting_type == SortingType.DECREASING_PROFIT:
+        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.profit, box.priority, box.size.volume()), reverse=True)
     else:
-        boxes.sort(key=lambda box: (box.customer_code, box.taxability), reverse=True)
+        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.customer_code, box.size.volume()), reverse=True)
 
 
 def perturb_phase1(boxes: list[Box]) -> None:
-    # TODO: update possible rotations?
+    # TODO: update possible rotations?    
+    #       precompute all possible permutations for each package type ahead of time?
     perturb_rotation = random.choice(list(PerturbRotation))
     if perturb_rotation == PerturbRotation.INDIVIDUAL:
         for box in boxes: box.rotate()
@@ -92,8 +77,8 @@ def perturb_phase1(boxes: list[Box]) -> None:
 def perturb_phase2(boxes: list[Box]) -> None:
     perturb_rotation = random.choice(list(PerturbOrder))
     for i in range(len(boxes) - 1):
-        key_curr = boxes[i].volume if perturb_rotation == PerturbOrder.VOLUME else boxes[i].weight
-        key_next = boxes[i + 1].volume if perturb_rotation == PerturbOrder.VOLUME else boxes[i + 1].weight
+        key_curr = boxes[i].size.volume() if perturb_rotation == PerturbOrder.VOLUME else boxes[i].weight
+        key_next = boxes[i + 1].size.volume() if perturb_rotation == PerturbOrder.VOLUME else boxes[i + 1].weight
         ratio = key_curr / key_next
         if REORDER_RATIO_LOWER_BOUND <= ratio <= REORDER_RATIO_HIGHER_BOUND and chance(REORDER_PROBABILITY):
             boxes[i], boxes[i + 1] = boxes[i + 1], boxes[i]
@@ -107,10 +92,11 @@ def is_better_fit_point(
     packing: Packing
 ) -> bool:
     if b is None: return True
-    diff = packing.get_support_score(box, a) - packing.get_support_score(box, b)
-    if diff > 0: return True
-    if diff < 0: return False
-    return a.x < b.x
+    a_floating = 1 - packing.get_support_score(box, a)
+    b_floating = 1 - packing.get_support_score(box, b)
+    a_stack_score = a.z if box.stackable else 0
+    b_stack_score = b.z if box.stackable else 0
+    return (a_floating, a_stack_score, a.x) < (b_floating, b_stack_score, b.x)
 
 
 def find_best_point(box: Box, potential_points: list[Point], packing: Packing) -> Point:
@@ -119,6 +105,11 @@ def find_best_point(box: Box, potential_points: list[Point], packing: Packing) -
         if packing.can_be_added(box, point) and is_better_fit_point(point, best_point, box, packing):
             best_point = point
     return best_point
+
+
+def is_feasible(packing: Packing) -> bool:
+    # TODO: check packing feasibility
+    return True
 
 
 # Algorithm 2
@@ -131,14 +122,13 @@ def construct_packing(boxes: list[Box], container: Container) -> Packing:
     for box in boxes: # foreach item i in L
         best_point = find_best_point(box, potential_points, packing)
         if best_point is not None:
-            # print_debug(f'box={box.size} added at {best_point}')
             box.set_position(best_point)
             packing.add(box, best_point, potential_points)
         else:
             # The insertion of box has failed
             retry_list.append(box)
     
-    print_debug(f'construct_packing:: boxes={len(boxes)} retry_list={len(retry_list)}')
+    # print_debug(f'construct_packing:: boxes={len(boxes)} retry_list={len(retry_list)}')
    
     for box in retry_list:
         box.rotate()
@@ -155,8 +145,8 @@ def construct_packing(boxes: list[Box], container: Container) -> Packing:
 def rch(packing_input: PackingInput) -> PackingResult:
     input_container = packing_input.container
     input_boxes = packing_input.boxes
-    packing_options = []
-    for _ in range(ALGORITHM_REPEAT_COUNT): # iteration n=1 to N
+    best_packing = None
+    for i in range(ALGORITHM_REPEAT_COUNT): # iteration n=1 to N
         container = copy.deepcopy(input_container)
         boxes = copy.deepcopy(input_boxes)
 
@@ -171,12 +161,12 @@ def rch(packing_input: PackingInput) -> PackingResult:
 
         # construct a solution (section 4.4)
         packing = construct_packing(boxes, container)
-        packing_options.append(packing)
+        if is_feasible(packing) and packing.is_better_than(best_packing):
+            best_packing = packing
+        print_debug(f'[{i}/{ALGORITHM_REPEAT_COUNT}] best_packing::used_volume {best_packing.used_space.ratio()}\r')
 
-        # TODO: check if packing is infeasible
-
-    # TODO: return all packings
-    result = PackingResult(packing_input=packing_input, packing=packing_options[0])
+    print_debug(best_packing.get_stats(packing_input))
+    result = PackingResult(packing_input=packing_input, packing=best_packing)
     return result
     
 

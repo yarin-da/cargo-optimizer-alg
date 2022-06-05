@@ -18,6 +18,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             content_len = int(self.headers.get('Content-Length'))
             data = self.rfile.read(content_len)
             parsed_data = json.loads(data)
+            # print(json.dumps(parsed_data, indent=2))
             # find solution and parse to bytes
             solution = rch.pack(parsed_data)
             solution_str = json.dumps(solution, indent=2)

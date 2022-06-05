@@ -3,6 +3,13 @@ from enum import Enum, unique, auto
 
 
 @unique
+class UsedSpaceType(Enum):
+    NOT_USED = auto()
+    USED     = auto()
+    UNAVAIL  = auto()
+
+
+@unique
 class PerturbOrder(Enum):
     VOLUME = auto()
     WEIGHT = auto()
@@ -16,9 +23,11 @@ class PerturbRotation(Enum):
 
 @unique
 class SortingType(Enum):
-    DECREASING_TAXABILITY    = auto()
+    DECREASING_VOLUME    = auto()
     DECREASING_PRIORITY      = auto()
     DECREASING_CUSTOMER_CODE = auto()
+    DECREASING_PROFIT        = auto()
+    DECREASING_WD_PLANE_SIZE = auto()
 
 
 @unique
