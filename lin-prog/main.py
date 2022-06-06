@@ -263,8 +263,10 @@ def parse_json_input(input_data, m):
                     s_list.append(m.add_var(name="s_" + str(boxes_counter), var_type=BINARY))
                     boxes_counter += 1
 
+                sum = 0
                 for index in range(6):
-                    m += s_list[boxes_counter - index - 1] <= 1
+                    sum += s_list[boxes_counter - index - 1]
+                m += sum <= 1
 
         else:
             boxes += [Box(size=package_size, id=f'{package_type}-{i}', weight=weight, priority=priority, profit=profit,
@@ -363,9 +365,10 @@ if __name__ == '__main__':
     # for all 0 < i < n : Max sum(si * (maxPriority + 1) - priority_i)
     m.objective = maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n)))
 
+    weights_sum = 0
     # Add constraints
     for i in range(n):
-        m += (weights_list[i] * s_list[i]) <= container.weight
+        weights_sum += (weights_list[i] * s_list[i])
         m += x_list[i] + l_list[i] <= (L + M * (1 - s_list[i]))
         m += y_list[i] + w_list[i] <= (W + M * (1 - s_list[i]))
         m += z_list[i] + h_list[i] <= (H + M * (1 - s_list[i]))
@@ -379,6 +382,8 @@ if __name__ == '__main__':
             m += m.var_by_name(f"a_{i}_{j}") + m.var_by_name(f"b_{i}_{j}") + m.var_by_name(
                 f"c_{i}_{j}") + m.var_by_name(f"d_{i}_{j}") + m.var_by_name(f"e_{i}_{j}") + m.var_by_name(
                 f"f_{i}_{j}") >= (s_list[i] + s_list[j] - 1)
+
+    m += weights_sum <= container.weight
     m.max_gap = 0.05
     status = m.optimize(max_seconds=10000000000000000000)
     print('----- STATUS : ', status, '------')
