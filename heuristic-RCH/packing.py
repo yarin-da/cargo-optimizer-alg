@@ -1,3 +1,4 @@
+from struct import pack
 from rch_types import *
 from rch_used_space import *
 from util import *
@@ -10,11 +11,13 @@ class Packing:
         self.boxes = []
         self.total_weight = 0
         self.total_priority = 0
+        self.total_profit = 0
         self.used_space = UsedSpace(container.size)
 
     def add(self, box: Box, point: Point, potential_points: list[Point]) -> None:
         self.boxes.append(box)
         self.total_weight += box.weight
+        self.total_profit += box.profit
         self.total_priority += box.priority
         self.used_space.add(box, point)
 
@@ -68,16 +71,22 @@ class Packing:
     def unfloat(self):
         for box in self.boxes: self.used_space.unfloat(box)
 
+    def used_space_ratio(self) -> float: return self.used_space.ratio()
+
+    def box_usage(self, packing_input: PackingInput):
+        used_boxes = {}
+        for block in self.boxes:
+            for box in block.get_all_real_boxes():
+                if box.box_type not in used_boxes: used_boxes[box.box_type] = { 'used': 0 }
+            used_boxes[box.box_type] += 1
+        for box in packing_input.original_json['packages']: used_boxes[box['type']]['total'] = box['amount']
+        return used_boxes
+
     def get_stats(self, packing_input: PackingInput):
-        space_str = f'Space used: {self.used_space.ratio()}'
-        profit_str = f'Total profit: {sum([box.profit for box in self.boxes])}'
-        box_usage = {}
-        for box in self.boxes:
-            if box.box_type not in box_usage: box_usage[box.box_type] = 0
-            box_usage[box.box_type] += 1
-        box_amounts = {}
-        for box in packing_input.original_json['packages']: box_amounts[box['type']] = box['amount']
-        box_usage_str = '\n'.join([f'{key}: [{box_usage[key]}/{box_amounts[key]}]' for key in box_usage.keys()])
+        space_str = f'Space used: {self.used_space_ratio()}'
+        profit_str = f'Total profit: {self.total_profit}'
+        used_boxes = self.box_usage(packing_input)
+        box_usage_str = '\n'.join([f'{key}: [{used_boxes[key]["used"]}/{used_boxes[key]["total"]}]' for key in used_boxes.keys()])
         return '\n'.join([space_str, profit_str, box_usage_str])
 
 
@@ -168,5 +177,11 @@ class PackingResult:
                         "rotation-z": rotation.z
                     })
             assert_debug(dup_count == 0)
+        
+        json_data['stats'] = {
+            'profit': self.packing.total_profit,
+            'weight': self.packing.total_weight,
+            'box_usage': self.packing.box_usage(self.packing_input)
+        }
         return json_data
 
