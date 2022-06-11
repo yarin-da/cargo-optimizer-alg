@@ -77,9 +77,11 @@ class Packing:
         used_boxes = {}
         for block in self.boxes:
             for box in block.get_all_real_boxes():
-                if box.box_type not in used_boxes: used_boxes[box.box_type] = { 'used': 0 }
-            used_boxes[box.box_type] += 1
-        for box in packing_input.original_json['packages']: used_boxes[box['type']]['total'] = box['amount']
+                if box.box_type not in used_boxes: used_boxes[box.box_type] = { 'used': 0, 'total': 0 }
+            used_boxes[box.box_type]['used'] += 1
+        for box in packing_input.original_json['packages']: 
+            if box['type'] in used_boxes:
+                used_boxes[box['type']]['total'] = box['amount']
         return used_boxes
 
     def get_stats(self, packing_input: PackingInput):
