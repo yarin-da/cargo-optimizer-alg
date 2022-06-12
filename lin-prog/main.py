@@ -263,10 +263,12 @@ def parse_json_input(input_data, m):
                     s_list.append(m.add_var(name="s_" + str(boxes_counter), var_type=BINARY))
                     boxes_counter += 1
 
-                sum = 0
-                for index in range(6):
-                    sum += s_list[boxes_counter - index - 1]
-                m += sum <= 1
+                # sum = 0
+                m += xsum(s_list[boxes_counter-i-1] for i in range(6)) <= 1
+
+                # for index in range(6):
+                #     sum += s_list[boxes_counter - index - 1]
+                # m += sum <= 1
 
         else:
             boxes += [Box(size=package_size, id=f'{package_type}-{i}', weight=weight, priority=priority, profit=profit,
@@ -359,16 +361,18 @@ if __name__ == '__main__':
 
     # Add objective functions
     # Maximize volume.
-    m.objective = maximize(xsum(l_list[i] * w_list[i] * h_list[i] * s_list[i] for i in range(n)) / (L * W * H))
+    m.objective = maximize(xsum(l_list[i] * w_list[i] * h_list[i] * s_list[i] for i in range(n)) )
     # Maximize profit.
-    m.objective = maximize(xsum(s_list[i] * v_list[i] for i in range(n)))
+    m.objective.add_expr(maximize(xsum(s_list[i] * v_list[i] for i in range(n))),1)
+    # m.objective = maximize(xsum(s_list[i] * v_list[i] for i in range(n)))
     # for all 0 < i < n : Max sum(si * (maxPriority + 1) - priority_i)
-    m.objective = maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n)))
+    m.objective.add_expr(maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n))),1)
+    # m.objective = maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n)))
 
     weights_sum = 0
     # Add constraints
     for i in range(n):
-        weights_sum += (weights_list[i] * s_list[i])
+        # weights_sum += (weights_list[i] * s_list[i])
         m += x_list[i] + l_list[i] <= (L + M * (1 - s_list[i]))
         m += y_list[i] + w_list[i] <= (W + M * (1 - s_list[i]))
         m += z_list[i] + h_list[i] <= (H + M * (1 - s_list[i]))
@@ -383,9 +387,10 @@ if __name__ == '__main__':
                 f"c_{i}_{j}") + m.var_by_name(f"d_{i}_{j}") + m.var_by_name(f"e_{i}_{j}") + m.var_by_name(
                 f"f_{i}_{j}") >= (s_list[i] + s_list[j] - 1)
 
-    m += weights_sum <= container.weight
+    m += xsum(weights_list[i] * s_list[i] for i in range(n)) <= container.weight
+
     m.max_gap = 0.05
-    status = m.optimize(max_seconds=10000000000000000000)
+    status = m.optimize(max_seconds=400)
     print('----- STATUS : ', status, '------')
     if status == OptimizationStatus.OPTIMAL:
         print('optimal solution cost {} found'.format(m.objective_value))
@@ -395,6 +400,12 @@ if __name__ == '__main__':
         print('no feasible solution found, lower bound is: {} '.format(m.objective_bound))
     if status == OptimizationStatus.OPTIMAL or status == OptimizationStatus.FEASIBLE:
         print('solution:')
+        print("number of boxes inside the container ", sum([s_list[i].x for i in range(n)]))
+        for i in range(n):
+            if s_list[i].x == 1.0:
+                print(f"box id {i}")
+                print(x_list[i].x,y_list[i].x,z_list[i].x)
         for v in m.vars:
+
             # if abs(v.x) > 1e-6:  # only printing non-zeros
             print('{} : {} '.format(v.name, v.x))
