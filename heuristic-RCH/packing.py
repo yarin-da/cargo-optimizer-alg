@@ -141,7 +141,8 @@ class PackingResult:
             json_data['container'] = {
                 "width": int(container_size.w),
                 "height": int(container_size.h),
-                "depth": int(container_size.d)
+                "depth": int(container_size.d),
+                "maxWeight": float(self.packing_input.container.weight_limit)
             }
             
             packages = self.packing_input.original_json['packages']
@@ -183,7 +184,8 @@ class PackingResult:
         json_data['stats'] = {
             'profit': self.packing.total_profit,
             'weight': self.packing.total_weight,
-            'box_usage': self.packing.box_usage(self.packing_input)
+            'box_usage': self.packing.box_usage(self.packing_input),
+            'space_usage': self.packing.used_space_ratio()
         }
         return json_data
 
