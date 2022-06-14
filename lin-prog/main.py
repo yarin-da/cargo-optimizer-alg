@@ -242,29 +242,29 @@ def parse_json_input(input_data, m):
         if canRotate:
             for i in range(package['amount']):
                 boxes += [Box(size=package_size, id=f'{package_type}-{i}--{0}', weight=weight, priority=priority,
-                             profit=profit, can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                              profit=profit, can_roat=canRotate, can_down=canStackAbove, nosort=True)]
                 boxes += [Box(size=(width, depth, height), id=f'{package_type}-{i}--{1}', weight=weight,
-                             priority=priority, profit=profit,
-                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                              priority=priority, profit=profit,
+                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
                 boxes += [Box(size=(width, height, depth), id=f'{package_type}-{i}--{2}', weight=weight,
-                             priority=priority, profit=profit,
-                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                              priority=priority, profit=profit,
+                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
                 boxes += [Box(size=(height, depth, width), id=f'{package_type}-{i}--{3}', weight=weight,
-                             priority=priority, profit=profit,
-                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                              priority=priority, profit=profit,
+                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
                 boxes += [Box(size=(depth, height, width), id=f'{package_type}-{i}--{4}', weight=weight,
-                             priority=priority, profit=profit,
-                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                              priority=priority, profit=profit,
+                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
                 boxes += [Box(size=(depth, width, height), id=f'{package_type}-{i}--{5}', weight=weight,
-                             priority=priority, profit=profit,
-                             can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                              priority=priority, profit=profit,
+                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
 
                 for j in range(6):
                     s_list.append(m.add_var(name="s_" + str(boxes_counter), var_type=BINARY))
                     boxes_counter += 1
 
                 # sum = 0
-                m += xsum(s_list[boxes_counter-i-1] for i in range(6)) <= 1
+                m += xsum(s_list[boxes_counter - i - 1] for i in range(6)) <= 1
 
                 # for index in range(6):
                 #     sum += s_list[boxes_counter - index - 1]
@@ -305,7 +305,7 @@ def generateBox():
     return cargo
 
 
-if __name__ == '__main__':
+def run_mip():
     filepath = './input.json'
     m = Model("CLP")
     M = 1e7
@@ -341,7 +341,7 @@ if __name__ == '__main__':
 
     f_list = [m.add_var(name="f_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     #  A binary variable which is equal to 1 if box i is placed in the container
-    #s_list = [m.add_var(name="s_" + str(i), var_type=BINARY) for i in range(n)]
+    # s_list = [m.add_var(name="s_" + str(i), var_type=BINARY) for i in range(n)]
 
     # Profit values.
     v_list = [boxes[i].get_profit() for i in range(n)]
@@ -361,12 +361,12 @@ if __name__ == '__main__':
 
     # Add objective functions
     # Maximize volume.
-    m.objective = maximize(xsum(l_list[i] * w_list[i] * h_list[i] * s_list[i] for i in range(n)) )
+    m.objective = maximize(xsum(l_list[i] * w_list[i] * h_list[i] * s_list[i] for i in range(n)))
     # Maximize profit.
-    m.objective.add_expr(maximize(xsum(s_list[i] * v_list[i] for i in range(n))),1)
+    m.objective.add_expr(xsum(s_list[i] * v_list[i] for i in range(n)), 1)
     # m.objective = maximize(xsum(s_list[i] * v_list[i] for i in range(n)))
     # for all 0 < i < n : Max sum(si * (maxPriority + 1) - priority_i)
-    m.objective.add_expr(maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n))),1)
+    m.objective.add_expr(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n)), 1)
     # m.objective = maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n)))
 
     weights_sum = 0
@@ -390,7 +390,7 @@ if __name__ == '__main__':
     m += xsum(weights_list[i] * s_list[i] for i in range(n)) <= container.weight
 
     m.max_gap = 0.05
-    status = m.optimize(max_seconds=400)
+    status = m.optimize(max_seconds=60)
     print('----- STATUS : ', status, '------')
     if status == OptimizationStatus.OPTIMAL:
         print('optimal solution cost {} found'.format(m.objective_value))
@@ -401,11 +401,29 @@ if __name__ == '__main__':
     if status == OptimizationStatus.OPTIMAL or status == OptimizationStatus.FEASIBLE:
         print('solution:')
         print("number of boxes inside the container ", sum([s_list[i].x for i in range(n)]))
+        result = {}
+        result['solution'] = []
+
         for i in range(n):
             if s_list[i].x == 1.0:
-                print(f"box id {i}")
-                print(x_list[i].x,y_list[i].x,z_list[i].x)
-        for v in m.vars:
+                result['solution'].append({
+                    "type": boxes[i].ID.split('-')[0],
+                    'x': x_list[i],
+                    'y': y_list[i],
+                    'z': z_list[i],
+                    'rotation-x': boxes[i].rotX,
+                    'rotation-y': boxes[i].rotY,
+                    'rotation-z': boxes[i].rotZ,
+                })
 
-            # if abs(v.x) > 1e-6:  # only printing non-zeros
-            print('{} : {} '.format(v.name, v.x))
+                print(boxes[i].ID)
+                print(x_list[i].x, y_list[i].x, z_list[i].x)
+    return result
+    # for v in m.vars:
+    #
+    #     # if abs(v.x) > 1e-6:  # only printing non-zeros
+    #     print('{} : {} '.format(v.name, v.x))
+
+
+if __name__ == '__main__':
+    run_mip()
