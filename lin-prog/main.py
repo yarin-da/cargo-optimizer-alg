@@ -143,7 +143,7 @@ class Package(object):
 
 
 class Box(Package):
-    def __init__(self, size, id=0, can_roat=True, can_down=True, rotX=0, rotY=0, rotZ=0, priority=0, profit=0, weight=0,
+    def __init__(self, size, id=0, can_roat=True, can_down=True, rot=(0, 0, 0), priority=0, profit=0, weight=0,
                  nosort=False):
         super().__init__(size, weight, nosort)
         self.X = self.Y = self.Z = -1
@@ -152,9 +152,9 @@ class Box(Package):
         self.can_down = can_down
         self.priority = priority
         self.profit = profit
-        self.rotX = rotX
-        self.rotY = rotY
-        self.rotZ = rotZ
+        self.rotX = rot[0]
+        self.rotY = rot[1]
+        self.rotZ = rot[2]
 
     def set_coordinates(self, coordinates):
         self.X = coordinates[0]
@@ -237,27 +237,32 @@ def parse_json_input(input_data, m):
         width = package['width']
         height = package['height']
         depth = package['depth']
-        package_size = (height, width, depth)
+        package_size = (width, depth, height)
         package_type = package['type']
+        rotations = [
+            ((width, depth, height), (0,  0,  0)),
+            ((width, height, depth), (90, 0,  0)),
+            ((depth, width, height), (0,  0,  90)),
+            ((height, width, depth), (90, 0,  90)),
+            ((height, depth, width), (0,  90, 0)),
+            ((depth, height, width), (90, 90, 0)),
+        ]
         if canRotate:
             for i in range(package['amount']):
-                boxes += [Box(size=package_size, id=f'{package_type}-{i}--{0}', weight=weight, priority=priority,
-                              profit=profit, can_roat=canRotate, can_down=canStackAbove, nosort=True)]
-                boxes += [Box(size=(width, depth, height), id=f'{package_type}-{i}--{1}', weight=weight,
-                              priority=priority, profit=profit,
-                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
-                boxes += [Box(size=(width, height, depth), id=f'{package_type}-{i}--{2}', weight=weight,
-                              priority=priority, profit=profit,
-                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
-                boxes += [Box(size=(height, depth, width), id=f'{package_type}-{i}--{3}', weight=weight,
-                              priority=priority, profit=profit,
-                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
-                boxes += [Box(size=(depth, height, width), id=f'{package_type}-{i}--{4}', weight=weight,
-                              priority=priority, profit=profit,
-                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
-                boxes += [Box(size=(depth, width, height), id=f'{package_type}-{i}--{5}', weight=weight,
-                              priority=priority, profit=profit,
-                              can_roat=canRotate, can_down=canStackAbove, nosort=True)]
+                for size, rot in rotations:
+                    boxes += [
+                        Box(
+                            size=size, 
+                            id=f'{package_type}-{i}--{0}', 
+                            weight=weight, 
+                            priority=priority, 
+                            profit=profit, 
+                            rot=rot, 
+                            can_roat=canRotate, 
+                            can_down=canStackAbove, 
+                            nosort=True
+                        )
+                    ]
 
                 for j in range(6):
                     s_list.append(m.add_var(name="s_" + str(boxes_counter), var_type=BINARY))
