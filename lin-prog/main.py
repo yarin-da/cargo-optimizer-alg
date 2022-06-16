@@ -395,7 +395,7 @@ def run_mip():
     m += xsum(weights_list[i] * s_list[i] for i in range(n)) <= container.weight
 
     m.max_gap = 0.05
-    status = m.optimize(max_seconds=60)
+    status = m.optimize(max_seconds=45)
     print('----- STATUS : ', status, '------')
     if status == OptimizationStatus.OPTIMAL:
         print('optimal solution cost {} found'.format(m.objective_value))
@@ -423,6 +423,7 @@ def run_mip():
 
                 print(boxes[i].ID)
                 print(x_list[i].x, y_list[i].x, z_list[i].x)
+                print(boxes[i].rotX, boxes[i].rotY, boxes[i].rotZ)
     return result
     # for v in m.vars:
     #
