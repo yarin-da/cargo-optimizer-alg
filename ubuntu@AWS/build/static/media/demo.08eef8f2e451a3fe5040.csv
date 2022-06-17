@@ -1,6 +1,0 @@
-﻿,width,height,depth,cost,maxWeight,type,amount,priority,weight,profit,canRotate,canStackAbove
-container,50,7,12,10000.2,500.4,-,-,-,-,-,-,-
-package,2,3,2,-,-,jewelry,8,5.1,5.3,100.4,TRUE,FALSE
-package,3,3.5,2,-,-,glass,2,10,7.2,150,FALSE,FALSE
-package,5,1,1.5,-,-,clothes,1,2.2,1.2,53.4,TRUE,TRUE
-package,4.5,2,3,-,-,electronic,3,8,4,85,FALSE,TRUE
