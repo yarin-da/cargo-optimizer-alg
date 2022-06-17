@@ -1,4 +1,3 @@
-from struct import pack
 from rch_types import *
 from rch_used_space import *
 from util import *

@@ -10,12 +10,8 @@ from packing import *
 from debug_utils import *
 
 
-# TODO: check weight distribution and load balacing (C2)
-
-
 SKIP_COMBINE_PROBABILITY = 1
-# TODO: ALGORITHM_REPEAT_COUNT = 150
-ALGORITHM_REPEAT_COUNT = 50
+ALGORITHM_REPEAT_COUNT = 250
 REORDER_PROBABILITY = 0.5
 REORDER_RATIO_OFFSET = 0.3
 REORDER_RATIO_LOWER_BOUND = 1 - REORDER_RATIO_OFFSET
@@ -62,8 +58,6 @@ def sort_boxes(boxes: list[Box], sorting_type: SortingType = None) -> None:
 
 
 def perturb_phase1(boxes: list[Box]) -> None:
-    # TODO: update possible rotations?    
-    #       precompute all possible permutations for each package type ahead of time?
     perturb_rotation = random.choice(list(PerturbRotation))
     if perturb_rotation == PerturbRotation.INDIVIDUAL:
         for box in boxes: box.rotate()
@@ -109,7 +103,6 @@ def find_best_point(box: Box, potential_points: list[Point], packing: Packing) -
 
 
 def is_feasible(packing: Packing) -> bool:
-    # TODO: check packing feasibility
     return True
 
 
@@ -183,8 +176,6 @@ def pack(input_data):
         result = rch(packing_input)
     except Exception as e:
         result = PackingResult(error=f'Exception: {e}')
-        # TODO: remove
-        raise e
     return result.to_json()
 
 

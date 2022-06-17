@@ -5,7 +5,7 @@ import json
 import rch
 
 class RequestHandler(BaseHTTPRequestHandler):
-    def do_OPTIONS(self):           
+    def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -14,25 +14,26 @@ class RequestHandler(BaseHTTPRequestHandler):
     
     def do_POST(self):
         try:
-            # read data
-            content_len = int(self.headers.get('Content-Length'))
-            data = self.rfile.read(content_len)
-            parsed_data = json.loads(data)
-            # print(json.dumps(parsed_data, indent=2))
-            # find solution and parse to bytes
-            solution = rch.pack(parsed_data)
-            solution_str = json.dumps(solution, indent=2)
-            solution_bytes = solution_str.encode('utf-8')
-            
-            # 200 OK
-            self.send_response(code=200)
-            # set headers
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Content-length', len(solution_bytes))
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            # write solution json to body
-            self.wfile.write(solution_bytes)
+            if self.path == '/api/solve':
+                # read data
+                content_len = int(self.headers.get('Content-Length'))
+                data = self.rfile.read(content_len)
+                parsed_data = json.loads(data)
+                # print(json.dumps(parsed_data, indent=2))
+                # find solution and parse to bytes
+                solution = rch.pack(parsed_data)
+                solution_str = json.dumps(solution, indent=2)
+                solution_bytes = solution_str.encode('utf-8')
+                
+                # 200 OK
+                self.send_response(code=200)
+                # set headers
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Content-length', len(solution_bytes))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                # write solution json to body
+                self.wfile.write(solution_bytes)
         except Exception as e:
             traceback.print_exc()
             print(e)
