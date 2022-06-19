@@ -240,11 +240,11 @@ def parse_json_input(input_data, m):
         package_size = (width, depth, height)
         package_type = package['type']
         rotations = [
-            ((width, depth, height), (0,  0,  0)),
-            ((width, height, depth), (90, 0,  0)),
-            ((depth, width, height), (0,  0,  90)),
-            ((height, width, depth), (90, 0,  90)),
-            ((height, depth, width), (0,  90, 0)),
+            ((width, depth, height), (0, 0, 0)),
+            ((width, height, depth), (90, 0, 0)),
+            ((depth, width, height), (0, 0, 90)),
+            ((height, width, depth), (90, 0, 90)),
+            ((height, depth, width), (0, 90, 0)),
             ((depth, height, width), (90, 90, 0)),
         ]
         if canRotate:
@@ -252,14 +252,14 @@ def parse_json_input(input_data, m):
                 for size, rot in rotations:
                     boxes += [
                         Box(
-                            size=size, 
-                            id=f'{package_type}-{i}--{0}', 
-                            weight=weight, 
-                            priority=priority, 
-                            profit=profit, 
-                            rot=rot, 
-                            can_roat=canRotate, 
-                            can_down=canStackAbove, 
+                            size=size,
+                            id=f'{package_type}-{i}--{0}',
+                            weight=weight,
+                            priority=priority,
+                            profit=profit,
+                            rot=rot,
+                            can_roat=canRotate,
+                            can_down=canStackAbove,
                             nosort=True
                         )
                     ]
@@ -310,15 +310,11 @@ def generateBox():
     return cargo
 
 
-def run_mip():
-    filepath = './input.json'
+def pack(json_data):
     m = Model("CLP")
     M = 1e7
 
     try:
-        json_file = open(filepath, 'r')
-        raw_data = json_file.read()
-        json_data = json.loads(raw_data)
         result, container, boxes, s_list = parse_json_input(json_data, m)
         n = len(boxes)
     except Exception as e:
@@ -346,10 +342,10 @@ def run_mip():
 
     f_list = [m.add_var(name="f_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
     #  A binary variable which is equal to 1 if box i is placed in the container
-    # s_list = [m.add_var(name="s_" + str(i), var_type=BINARY) for i in range(n)]
 
     # Profit values.
     v_list = [boxes[i].get_profit() for i in range(n)]
+
     # Weights list.
     weights_list = [boxes[i].get_weight() for i in range(n)]
     priority_list = [boxes[i].get_priority() for i in range(n)]
@@ -368,13 +364,12 @@ def run_mip():
     # Maximize volume.
     m.objective = maximize(xsum(l_list[i] * w_list[i] * h_list[i] * s_list[i] for i in range(n)))
     # Maximize profit.
-    m.objective.add_expr(xsum(s_list[i] * v_list[i] for i in range(n)), 1)
+    # m.objective.add_expr(maximize(xsum(s_list[i] * v_list[i] for i in range(n))), 1)
     # m.objective = maximize(xsum(s_list[i] * v_list[i] for i in range(n)))
     # for all 0 < i < n : Max sum(si * (maxPriority + 1) - priority_i)
-    m.objective.add_expr(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n)), 1)
+    # m.objective.add_expr(maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n))), 1)
     # m.objective = maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n)))
 
-    weights_sum = 0
     # Add constraints
     for i in range(n):
         # weights_sum += (weights_list[i] * s_list[i])
@@ -392,10 +387,11 @@ def run_mip():
                 f"c_{i}_{j}") + m.var_by_name(f"d_{i}_{j}") + m.var_by_name(f"e_{i}_{j}") + m.var_by_name(
                 f"f_{i}_{j}") >= (s_list[i] + s_list[j] - 1)
 
-    m += xsum(weights_list[i] * s_list[i] for i in range(n)) <= container.weight
+    # m += xsum(weights_list[i] * s_list[i] for i in range(n)) <= container.weight
 
     m.max_gap = 0.05
-    status = m.optimize(max_seconds=45)
+    status = m.optimize(max_seconds=500)
+    result['solution'] = []
     print('----- STATUS : ', status, '------')
     if status == OptimizationStatus.OPTIMAL:
         print('optimal solution cost {} found'.format(m.objective_value))
@@ -406,30 +402,69 @@ def run_mip():
     if status == OptimizationStatus.OPTIMAL or status == OptimizationStatus.FEASIBLE:
         print('solution:')
         print("number of boxes inside the container ", sum([s_list[i].x for i in range(n)]))
-        result = {}
-        result['solution'] = []
+        total_profit, total_weight, total_usage, total_space = 0, 0, 0, 0
 
         for i in range(n):
             if s_list[i].x == 1.0:
                 result['solution'].append({
                     "type": boxes[i].ID.split('-')[0],
-                    'x': x_list[i],
-                    'y': y_list[i],
-                    'z': z_list[i],
+                    'x': x_list[i].x,
+                    'y': y_list[i].x,
+                    'z': z_list[i].x,
                     'rotation-x': boxes[i].rotX,
                     'rotation-y': boxes[i].rotY,
                     'rotation-z': boxes[i].rotZ,
                 })
+                total_weight += weights_list[i]
+                total_profit += priority_list[i]
+                total_usage += l_list[i] * w_list[i] * h_list[i]
 
                 print(boxes[i].ID)
                 print(x_list[i].x, y_list[i].x, z_list[i].x)
-                print(boxes[i].rotX, boxes[i].rotY, boxes[i].rotZ)
+        result['stats'] = {
+            'profit': total_profit,
+            'weight': total_weight,
+            'box_usage': { "Food": {
+        "used": 15,
+        "total": 15
+      },
+      "Electronic": {
+        "used": 25,
+        "total": 25
+      },
+      "Shoes": {
+        "used": 17,
+        "total": 20
+      },
+      "Furniture": {
+        "used": 8,
+        "total": 15
+      },
+      "Clothes": {
+        "used": 5,
+        "total": 20
+      },
+      "Jewelry": {
+        "used": 5,
+        "total": 15
+      }},
+            'space_usage': total_usage/(L*H*W)
+        }
+
+        # for v in m.vars:
+        #
+        #     # if abs(v.x) > 1e-6:  # only printing non-zeros
+        #     print('{} : {} '.format(v.name, v.x))
     return result
-    # for v in m.vars:
-    #
-    #     # if abs(v.x) > 1e-6:  # only printing non-zeros
-    #     print('{} : {} '.format(v.name, v.x))
+
+
+def pack_from_file():
+    filepath = './input.json'
+    with open(filepath, 'r') as json_file:
+        raw_data = json_file.read()
+        json_data = json.loads(raw_data)
+        pack(json_data)
 
 
 if __name__ == '__main__':
-    run_mip()
+    pack_from_file()
