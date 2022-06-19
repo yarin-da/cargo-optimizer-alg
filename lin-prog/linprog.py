@@ -322,6 +322,7 @@ def pack(json_data):
         exit(-1)
 
     L, W, H = (container.length, container.width, container.heigth)
+    print(f'L={L}, W={W}, H={H}')
 
     # Add decision variables.
     a_list = [m.add_var(name="a_" + str(i) + "_" + str(j), var_type=BINARY) for i in range(n) for j in range(i + 1, n)]
@@ -364,10 +365,10 @@ def pack(json_data):
     # Maximize volume.
     m.objective = maximize(xsum(l_list[i] * w_list[i] * h_list[i] * s_list[i] for i in range(n)))
     # Maximize profit.
-    # m.objective.add_expr(maximize(xsum(s_list[i] * v_list[i] for i in range(n))), 1)
+    m.objective.add_expr(maximize(xsum(s_list[i] * v_list[i] for i in range(n))), 1)
     # m.objective = maximize(xsum(s_list[i] * v_list[i] for i in range(n)))
     # for all 0 < i < n : Max sum(si * (maxPriority + 1) - priority_i)
-    # m.objective.add_expr(maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n))), 1)
+    m.objective.add_expr(maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n))), 1)
     # m.objective = maximize(xsum((s_list[i] * ((max_priority + 1) - priority_list[i])) for i in range(n)))
 
     # Add constraints
@@ -383,11 +384,18 @@ def pack(json_data):
             m += y_list[j] + w_list[j] <= (y_list[i] + M * (1 - m.var_by_name(f"d_{i}_{j}")))
             m += z_list[i] + h_list[i] <= (z_list[j] + M * (1 - m.var_by_name(f"e_{i}_{j}")))
             m += z_list[j] + h_list[j] <= (z_list[i] + M * (1 - m.var_by_name(f"f_{i}_{j}")))
+
+            # m += x_list[i] + l_list[i] <= (x_list[j] + M * (1 - a_list[i][j]))
+            # m += x_list[j] + l_list[j] <= (x_list[i] + M * (1 - b_list[i][j]))
+            # m += y_list[i] + w_list[i] <= (y_list[j] + M * (1 - c_list[i][j]))
+            # m += y_list[j] + w_list[j] <= (y_list[i] + M * (1 - d_list[i][j]))
+            # m += z_list[i] + h_list[i] <= (z_list[j] + M * (1 - e_list[i][j]))
+            # m += z_list[j] + h_list[j] <= (z_list[i] + M * (1 - f_list[i][j]))
             m += m.var_by_name(f"a_{i}_{j}") + m.var_by_name(f"b_{i}_{j}") + m.var_by_name(
                 f"c_{i}_{j}") + m.var_by_name(f"d_{i}_{j}") + m.var_by_name(f"e_{i}_{j}") + m.var_by_name(
                 f"f_{i}_{j}") >= (s_list[i] + s_list[j] - 1)
 
-    # m += xsum(weights_list[i] * s_list[i] for i in range(n)) <= container.weight
+    m += xsum(weights_list[i] * s_list[i] for i in range(n)) <= container.weight
 
     m.max_gap = 0.05
     status = m.optimize(max_seconds=500)
@@ -408,9 +416,9 @@ def pack(json_data):
             if s_list[i].x == 1.0:
                 result['solution'].append({
                     "type": boxes[i].ID.split('-')[0],
-                    'x': x_list[i].x,
-                    'y': y_list[i].x,
-                    'z': z_list[i].x,
+                    'x': round(x_list[i].x),
+                    'y': round(y_list[i].x),
+                    'z': round(z_list[i].x),
                     'rotation-x': boxes[i].rotX,
                     'rotation-y': boxes[i].rotY,
                     'rotation-z': boxes[i].rotZ,
@@ -421,6 +429,8 @@ def pack(json_data):
 
                 print(boxes[i].ID)
                 print(x_list[i].x, y_list[i].x, z_list[i].x)
+
+        # TODO
         result['stats'] = {
             'profit': total_profit,
             'weight': total_weight,
@@ -451,10 +461,10 @@ def pack(json_data):
             'space_usage': total_usage/(L*H*W)
         }
 
-        # for v in m.vars:
-        #
-        #     # if abs(v.x) > 1e-6:  # only printing non-zeros
-        #     print('{} : {} '.format(v.name, v.x))
+        for v in m.vars:
+
+            # if abs(v.x) > 1e-6:  # only printing non-zeros
+            print('{} : {} '.format(v.name, v.x))
     return result
 
 
