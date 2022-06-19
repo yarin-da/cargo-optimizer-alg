@@ -374,23 +374,17 @@ def pack(json_data):
     # Add constraints
     for i in range(n):
         # weights_sum += (weights_list[i] * s_list[i])
-        m += x_list[i] + l_list[i] <= (L + M * (1 - s_list[i]))
-        m += y_list[i] + w_list[i] <= (W + M * (1 - s_list[i]))
+        m += x_list[i] + w_list[i] <= (W + M * (1 - s_list[i]))
+        m += y_list[i] + l_list[i] <= (L + M * (1 - s_list[i]))
         m += z_list[i] + h_list[i] <= (H + M * (1 - s_list[i]))
         for j in range(i + 1, n):
-            m += x_list[i] + l_list[i] <= (x_list[j] + M * (1 - m.var_by_name(f"a_{i}_{j}")))
-            m += x_list[j] + l_list[j] <= (x_list[i] + M * (1 - m.var_by_name(f"b_{i}_{j}")))
-            m += y_list[i] + w_list[i] <= (y_list[j] + M * (1 - m.var_by_name(f"c_{i}_{j}")))
-            m += y_list[j] + w_list[j] <= (y_list[i] + M * (1 - m.var_by_name(f"d_{i}_{j}")))
+            m += x_list[i] + w_list[i] <= (x_list[j] + M * (1 - m.var_by_name(f"a_{i}_{j}")))
+            m += x_list[j] + w_list[j] <= (x_list[i] + M * (1 - m.var_by_name(f"b_{i}_{j}")))
+            m += y_list[i] + l_list[i] <= (y_list[j] + M * (1 - m.var_by_name(f"c_{i}_{j}")))
+            m += y_list[j] + l_list[j] <= (y_list[i] + M * (1 - m.var_by_name(f"d_{i}_{j}")))
             m += z_list[i] + h_list[i] <= (z_list[j] + M * (1 - m.var_by_name(f"e_{i}_{j}")))
             m += z_list[j] + h_list[j] <= (z_list[i] + M * (1 - m.var_by_name(f"f_{i}_{j}")))
 
-            # m += x_list[i] + l_list[i] <= (x_list[j] + M * (1 - a_list[i][j]))
-            # m += x_list[j] + l_list[j] <= (x_list[i] + M * (1 - b_list[i][j]))
-            # m += y_list[i] + w_list[i] <= (y_list[j] + M * (1 - c_list[i][j]))
-            # m += y_list[j] + w_list[j] <= (y_list[i] + M * (1 - d_list[i][j]))
-            # m += z_list[i] + h_list[i] <= (z_list[j] + M * (1 - e_list[i][j]))
-            # m += z_list[j] + h_list[j] <= (z_list[i] + M * (1 - f_list[i][j]))
             m += m.var_by_name(f"a_{i}_{j}") + m.var_by_name(f"b_{i}_{j}") + m.var_by_name(
                 f"c_{i}_{j}") + m.var_by_name(f"d_{i}_{j}") + m.var_by_name(f"e_{i}_{j}") + m.var_by_name(
                 f"f_{i}_{j}") >= (s_list[i] + s_list[j] - 1)
