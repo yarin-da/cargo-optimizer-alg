@@ -4,9 +4,9 @@ from enum import Enum, unique, auto
 
 @unique
 class UsedSpaceType(Enum):
-    NOT_USED = auto()
-    USED     = auto()
-    UNAVAIL  = auto()
+    NOT_USED = 0
+    USED     = 1
+    UNAVAIL  = 2
 
 
 @unique

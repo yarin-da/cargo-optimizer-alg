@@ -2,6 +2,7 @@
 # https://www.researchgate.net/publication/355421342_An_optimization_approach_for_a_complex_real-life_container_loading_problem
 
 
+import math
 import copy
 import traceback
 import random
@@ -11,7 +12,7 @@ from debug_utils import *
 
 
 SKIP_COMBINE_PROBABILITY = 1
-ALGORITHM_REPEAT_COUNT = 250
+ALGORITHM_REPEAT_COUNT = 50
 REORDER_PROBABILITY = 0.5
 REORDER_RATIO_OFFSET = 0.3
 REORDER_RATIO_LOWER_BOUND = 1 - REORDER_RATIO_OFFSET
@@ -157,7 +158,10 @@ def rch(packing_input: PackingInput) -> PackingResult:
         packing = construct_packing(boxes, container)
         if is_feasible(packing) and packing.is_better_than(best_packing):
             best_packing = packing
-        print_debug(f'[{i}/{ALGORITHM_REPEAT_COUNT}] best_packing::used_volume {best_packing.used_space.ratio()}\r')
+        ratio = best_packing.used_space_ratio()
+        print_debug(f'[{i}/{ALGORITHM_REPEAT_COUNT}] best_packing::used_volume {ratio}\r')
+        # have we already finished?
+        if ratio == 1 or len(best_packing.boxes) == len(boxes): break
 
     print_debug(best_packing.get_stats(packing_input))
     result = PackingResult(packing_input=packing_input, packing=best_packing)
@@ -169,14 +173,40 @@ def parse_input(input_data: bytearray):
     return parsed_data
 
 
+def get_scalar(input_data) -> int:
+    c = input_data['container']
+    scalars = []
+    for dim in ['width', 'depth', 'height']:
+        dim_list = list(map(lambda x: x[dim], input_data['packages']))
+        dim_list.append(c[dim])
+        scalars.append(math.gcd(*dim_list))
+    scalar = min(*scalars)
+    return scalar
+
+
+def scale_input(input_data, scalar) -> None:
+    if scalar == 1: return
+    c = input_data['container']
+    for dim in ['width', 'depth', 'height']:
+        for pkg in input_data['packages']:
+            pkg[dim] //= scalar
+        c[dim] //= scalar
+
+
 def pack(input_data):
-    result = {}
+    result_json = None
     try:
-        packing_input = PackingInput(input_data)
+        scalar = get_scalar(input_data)
+        scale_input(input_data, scalar)
+        packing_input = PackingInput(input_data, scalar)
         result = rch(packing_input)
+        result_json = result.to_json()
     except Exception as e:
         result = PackingResult(error=f'Exception: {e}')
-    return result.to_json()
+        print('EXCEPTION')
+        print(traceback.format_exc())
+        print(e)
+    return result_json
 
 
 def write_result_to_file(result):

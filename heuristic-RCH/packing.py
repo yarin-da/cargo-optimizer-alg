@@ -92,8 +92,9 @@ class Packing:
 
 
 class PackingInput:
-    def __init__(self, json_data):
+    def __init__(self, json_data, scalar):
         self.original_json = json_data
+        self.scalar = scalar
         # init container
         container = json_data['container']
         container_size = Size((container['width'], container['depth'], container['height']))
@@ -135,6 +136,8 @@ class PackingResult:
         json_data = {}
         if self.error is not None:
             json_data['error'] = self.error
+            return json_data
+
         if self.packing is not None:
             container_size = self.packing.container.size
             json_data['container'] = {
@@ -186,5 +189,7 @@ class PackingResult:
             'box_usage': self.packing.box_usage(self.packing_input),
             'space_usage': self.packing.used_space_ratio()
         }
+
+        json_data['scalar'] = self.packing_input.scalar
         return json_data
 
