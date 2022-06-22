@@ -8,7 +8,7 @@
             "name": "RCH - Debug - Test",
             "type": "python",
             "request": "launch",
-            "program": "./heuristic-rch/tests.py",
+            "program": "./tests.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -16,15 +16,19 @@
             "name": "RCH - Debug - Server",
             "type": "python",
             "request": "launch",
-            "program": "./heuristic-rch/server.py",
+            "program": "./server.py",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "env": {
+                "PORT": "8080",
+                "ALG_REPEAT": "150"
+            }
         },
         {
             "name": "RCH - Debug - Local",
             "type": "python",
             "request": "launch",
-            "program": "./heuristic-rch/rch.py",
+            "program": "./rch.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
