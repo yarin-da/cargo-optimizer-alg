@@ -34,6 +34,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.send_header('Content-length', len(solution_bytes))
                 self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                self.send_header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type") 
                 self.end_headers()
                 # write solution json to body
                 self.wfile.write(solution_bytes)
