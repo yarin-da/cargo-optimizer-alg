@@ -44,7 +44,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_error(code=500)
 
 
-def run(server_class=HTTPServer, handler_class=RequestHandler, port=PORT):
+def run(server_class=HTTPServer, handler_class=RequestHandler, port=int(PORT)):
     logging.basicConfig(level=logging.INFO)
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)

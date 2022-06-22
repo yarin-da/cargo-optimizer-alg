@@ -1,5 +1,6 @@
 import unittest
-from definitions import *
+from rch_types import *
+from rch import combine
 
 
 def get_testing_box(size: Size, rotations: set(RotationType) = set(list(RotationType))) -> Box:
