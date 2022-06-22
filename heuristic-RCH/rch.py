@@ -6,13 +6,14 @@ import math
 import copy
 import traceback
 import random
+import os
 import json
 from packing import *
 from debug_utils import *
 
 
+ALGORITHM_REPEAT_COUNT = int(os.environ.get('REPEAT', '50'))
 SKIP_COMBINE_PROBABILITY = 1
-ALGORITHM_REPEAT_COUNT = 50
 REORDER_PROBABILITY = 0.5
 REORDER_RATIO_OFFSET = 0.3
 REORDER_RATIO_LOWER_BOUND = 1 - REORDER_RATIO_OFFSET

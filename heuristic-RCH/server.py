@@ -3,6 +3,9 @@ import traceback
 import logging
 import json
 import rch
+import os
+
+PORT = os.environ.get('PORT', '8080')
 
 class RequestHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -41,7 +44,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_error(code=500)
 
 
-def run(server_class=HTTPServer, handler_class=RequestHandler, port=8080):
+def run(server_class=HTTPServer, handler_class=RequestHandler, port=PORT):
     logging.basicConfig(level=logging.INFO)
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
