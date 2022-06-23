@@ -1,4 +1,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
+import threading
+
 import traceback
 import logging
 import json
@@ -46,17 +49,23 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_error(code=500)
 
 
-def run(server_class=HTTPServer, handler_class=RequestHandler, port=int(PORT)):
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle requests in a separate thread."""
+
+
+def run(handler_class=RequestHandler, port=int(PORT)):
     logging.basicConfig(level=logging.INFO)
     server_address = ('', port)
-    httpd = server_class(server_address, handler_class)
-    logging.info('Starting httpd...\n')
+    httpd = ThreadedHTTPServer(server_address, handler_class)
+    logging.info('Starting server...\n')
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
-    httpd.server_close()
-    logging.info('Stopping httpd...\n')
+    finally:
+        httpd.server_close()
+        logging.info('Stopping server...\n')
+
 
 if __name__ == '__main__':
     from sys import argv
