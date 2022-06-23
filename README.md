@@ -21,3 +21,7 @@ A simple algorithm that sorts the packages based on volume. The bigger volume pa
 The codebase uses `mip` python package that runs linear programming. The main challenge is figuring out the variable and constraints. 
 
 The biggest con for this algorithm is the time it takes since linear programming goes through a lot of options.
+
+## Demonstration
+
+[Youtube Video](https://youtu.be/Zvjm5s7ZOZs)
