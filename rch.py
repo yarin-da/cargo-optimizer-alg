@@ -204,9 +204,9 @@ def pack(input_data):
         result_json = result.to_json()
     except Exception as e:
         result = PackingResult(error=f'Exception: {e}')
-        print('EXCEPTION')
-        print(traceback.format_exc())
-        print(e)
+        print_debug('EXCEPTION')
+        print_debug(traceback.format_exc())
+        print_debug(e)
     return result_json
 
 

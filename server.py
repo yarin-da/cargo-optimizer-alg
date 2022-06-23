@@ -1,7 +1,5 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
-import threading
-
 import traceback
 import logging
 import json
