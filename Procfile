@@ -1,1 +1,1 @@
-web: python ./heuristic-RCH/server.py
+web: python server.py
