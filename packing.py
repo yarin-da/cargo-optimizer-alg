@@ -59,12 +59,21 @@ class Packing:
         floating_scores = [self.used_space.get_support_score(b, point) for b in real_boxes]
         return min(floating_scores)
 
-    def is_better_than(self, other: Packing) -> bool:
+    def is_better_than(self, other: Packing, preference: str = 'volume') -> bool:
         if other is None: return True
-        self_unused_ratio = 1 - self.used_space.ratio()
-        other_unused_ratio = 1 - other.used_space.ratio()
-        return other is None or self_unused_ratio < other_unused_ratio
+        
+        # comparators that return True iff self is better than other
+        def cmp_space(self, other):
+            self_unused_ratio = 1 - self.used_space.ratio()
+            other_unused_ratio = 1 - other.used_space.ratio()
+            return self_unused_ratio < other_unused_ratio
+        def cmp_profit(self, other):   return self.total_profit > other.total_profit
+        def cmp_priority(self, other): return self.total_priority > other.total_priority
 
+        if preference == 'profit':   return cmp_profit(self, other)
+        if preference == 'priority': return cmp_priority(self, other)
+        return cmp_space(self, other)
+        
     def unfloat(self):
         for box in self.boxes: self.used_space.unfloat(box)
 
@@ -93,6 +102,7 @@ class PackingInput:
     def __init__(self, json_data, scalar):
         self.original_json = json_data
         self.scalar = scalar
+        self.preference = json_data['preference'] if 'preference' in json_data else 'volume'
         # init container
         container = json_data['container']
         container_size = (container['width'], container['depth'], container['height'])

@@ -160,7 +160,7 @@ def rch(packing_input: PackingInput) -> PackingResult:
 
         # construct a solution (section 4.4)
         packing = construct_packing(boxes, container)
-        if is_feasible(packing) and packing.is_better_than(best_packing):
+        if is_feasible(packing) and packing.is_better_than(best_packing, packing_input.preference):
             best_packing = packing
         ratio = best_packing.used_space_ratio()
         print_debug(f'[{i}/{ALGORITHM_REPEAT_COUNT}] best_packing::used_volume {ratio}\r')
