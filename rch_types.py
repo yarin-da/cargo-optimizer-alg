@@ -5,47 +5,11 @@ class PackingInput: pass
 class Combination:  pass
 class Rotation3D:   pass
 class Packing:      pass
-class Point:        pass
-class Size:         pass
 class Box:          pass
 
 
-class Point:
-    def __init__(self, x: int, y: int, z: int):
-        self.x = x
-        self.y = y
-        self.z = z
-
-    def __eq__(self, other):
-        return self.x == other.x and self.y == other.y and self.z == other.z
-
-    def __str__(self):
-        return f'Point(x={self.x}, y={self.y}, z={self.z})'
-
-    def __repr__(self):
-        return f'Point(x={self.x}, y={self.y}, z={self.z})'
-
-
-class Size:
-    def __init__(self, dims: tuple[int, int, int]):
-        self.w = dims[0]
-        self.d = dims[1]
-        self.h = dims[2]
-
-    def volume(self):
-        return self.w * self.d * self.h
-
-    def to_tuple(self):
-        return (self.w, self.d, self.h)
-
-    def __eq__(self, other):
-        return self.w == other.w and self.h == other.h and self.d == other.d
-
-    def __str__(self):
-        return f'Size(w={self.w}, d={self.d}, h={self.h})'
-        
-    def __repr__(self):
-        return f'Size(w={self.w}, d={self.d}, h={self.h})'
+Point = tuple[int, int, int]
+Size = tuple[int, int, int]
 
 
 class Container:
@@ -75,30 +39,30 @@ class Combination:
         self.combination_type = combination_type         
 
     def set_position(self, position: Point) -> None:
-        x, y, z = position.x, position.y, position.z
+        x, y, z = position
         a_size = self.first.size
-        aw, ah, ad = a_size.w, a_size.h, a_size.d
+        aw, ah, ad = a_size
         b_size = self.second.size
-        bw, bh, bd = b_size.w, b_size.h, b_size.d
+        bw, bh, bd = b_size
 
         if self.combination_type == CombinationType.WH_LOWER:
-            self.first.set_position(Point(x, y, z))
-            self.second.set_position(Point(x, y + ad, z))
+            self.first.set_position((x, y, z))
+            self.second.set_position((x, y + ad, z))
         elif self.combination_type == CombinationType.WD_LOWER:
-            self.first.set_position(Point(x, y, z))
-            self.second.set_position(Point(x, y, z + ah))
+            self.first.set_position((x, y, z))
+            self.second.set_position((x, y, z + ah))
         elif self.combination_type == CombinationType.HD_LOWER:
-            self.first.set_position(Point(x, y, z))
-            self.second.set_position(Point(x + aw, y, z))
+            self.first.set_position((x, y, z))
+            self.second.set_position((x + aw, y, z))
         elif self.combination_type == CombinationType.WH_HIGHER:
-            self.first.set_position(Point(x, y + bd, z))
-            self.second.set_position(Point(x, y, z))
+            self.first.set_position((x, y + bd, z))
+            self.second.set_position((x, y, z))
         elif self.combination_type == CombinationType.WD_HIGHER:
-            self.first.set_position(Point(x, y, z + bh))
-            self.second.set_position(Point(x, y, z))
+            self.first.set_position((x, y, z + bh))
+            self.second.set_position((x, y, z))
         else:
-            self.first.set_position(Point(x + bw, y, z))
-            self.second.set_position(Point(x, y, z))
+            self.first.set_position((x + bw, y, z))
+            self.second.set_position((x, y, z))
         
     def rotate(self, rotation_type: RotationType) -> None:
         self.first.rotate(rotation_type)

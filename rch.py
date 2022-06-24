@@ -10,9 +10,10 @@ import os
 import json
 from packing import *
 from debug_utils import *
+from typing import Callable, Any
 
 
-ALGORITHM_REPEAT_COUNT = int(os.environ.get('REPEAT', '50'))
+ALGORITHM_REPEAT_COUNT = int(os.environ.get('REPEAT', '150'))
 SKIP_COMBINE_PROBABILITY = 1
 REORDER_PROBABILITY = 0.5
 REORDER_RATIO_OFFSET = 0.3
@@ -20,8 +21,10 @@ REORDER_RATIO_LOWER_BOUND = 1 - REORDER_RATIO_OFFSET
 REORDER_RATIO_HIGHER_BOUND = 1 + REORDER_RATIO_OFFSET
 
 
-def chance(probability: float) -> bool: 
-    return random.random() < probability
+def volume(size: Size) -> int: return size[0]*size[1]*size[2]
+
+
+def chance(probability: float) -> bool: return random.random() < probability
 
 
 def preprocess_boxes(boxes: list[Box]) -> list[Box]:
@@ -50,13 +53,13 @@ def sort_boxes(boxes: list[Box], sorting_type: SortingType = None) -> None:
     if sorting_type is None:
         sorting_type = random.choice(list(SortingType))
     if sorting_type == SortingType.DECREASING_VOLUME:
-        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.size.volume(), box.priority, box.profit), reverse=True)
+        boxes.sort(key=lambda box: (2 if box.stackable else 1, volume(box.size), box.priority, box.profit), reverse=True)
     elif sorting_type == SortingType.DECREASING_PRIORITY:
-        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.priority, box.size.volume()), reverse=True)
+        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.priority, volume(box.size)), reverse=True)
     elif sorting_type == SortingType.DECREASING_PROFIT:
-        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.profit, box.priority, box.size.volume()), reverse=True)
+        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.profit, box.priority, volume(box.size)), reverse=True)
     else:
-        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.customer_code, box.size.volume()), reverse=True)
+        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.customer_code, volume(box.size)), reverse=True)
 
 
 def perturb_phase1(boxes: list[Box]) -> None:
@@ -74,8 +77,8 @@ def perturb_phase1(boxes: list[Box]) -> None:
 def perturb_phase2(boxes: list[Box]) -> None:
     perturb_rotation = random.choice(list(PerturbOrder))
     for i in range(len(boxes) - 1):
-        key_curr = boxes[i].size.volume() if perturb_rotation == PerturbOrder.VOLUME else boxes[i].weight
-        key_next = boxes[i + 1].size.volume() if perturb_rotation == PerturbOrder.VOLUME else boxes[i + 1].weight
+        key_curr = volume(boxes[i].size) if perturb_rotation == PerturbOrder.VOLUME else boxes[i].weight
+        key_next = volume(boxes[i + 1].size) if perturb_rotation == PerturbOrder.VOLUME else boxes[i + 1].weight
         ratio = key_curr / key_next
         if REORDER_RATIO_LOWER_BOUND <= ratio <= REORDER_RATIO_HIGHER_BOUND and chance(REORDER_PROBABILITY):
             boxes[i], boxes[i + 1] = boxes[i + 1], boxes[i]
@@ -91,9 +94,9 @@ def is_better_fit_point(
     if b is None: return True
     a_floating = 1 - packing.get_support_score(box, a)
     b_floating = 1 - packing.get_support_score(box, b)
-    a_stack_score = a.z if box.stackable else 0
-    b_stack_score = b.z if box.stackable else 0
-    return (a_floating, a_stack_score, a.x) < (b_floating, b_stack_score, b.x)
+    a_stack_score = a[2] if box.stackable else 0
+    b_stack_score = b[2] if box.stackable else 0
+    return (a_floating, a_stack_score, a[0]) < (b_floating, b_stack_score, b[0])
 
 
 def find_best_point(box: Box, potential_points: list[Point], packing: Packing) -> Point:
@@ -111,7 +114,7 @@ def is_feasible(packing: Packing) -> bool:
 # Algorithm 2
 # Constructive Packing Phase of RCH
 def construct_packing(boxes: list[Box], container: Container) -> Packing:
-    potential_points = [Point(0, 0, 0), Point(container.size.w, 0, 0)] # P = {BLF, BRF}
+    potential_points = [(0, 0, 0), (container.size[0], 0, 0)] # P = {BLF, BRF}
     retry_list = []
     packing = Packing(container)
     
@@ -163,7 +166,7 @@ def rch(packing_input: PackingInput) -> PackingResult:
         print_debug(f'[{i}/{ALGORITHM_REPEAT_COUNT}] best_packing::used_volume {ratio}\r')
         # have we already finished?
         if ratio == 1 or len(best_packing.boxes) == len(boxes): break
-
+        
     print_debug(best_packing.get_stats(packing_input))
     result = PackingResult(packing_input=packing_input, packing=best_packing)
     return result
@@ -204,9 +207,7 @@ def pack(input_data):
         result_json = result.to_json()
     except Exception as e:
         result = PackingResult(error=f'Exception: {e}')
-        print_debug('EXCEPTION')
         print_debug(traceback.format_exc())
-        print_debug(e)
     return result_json
 
 

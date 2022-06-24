@@ -22,17 +22,17 @@ class Packing:
 
         potential_points.remove(point)
 
-        corner_w = Point(point.x + box.size.w, point.y, point.z)
+        corner_w = (point[0] + box.size[0], point[1], point[2])
         projected_corner_w = self.used_space.vertical_projection(corner_w)
         if projected_corner_w is not None:
             potential_points.append(projected_corner_w)
 
-        corner_d = Point(point.x, point.y + box.size.d, point.z)
+        corner_d = (point[0], point[1] + box.size[1], point[2])
         projected_corner_d = self.used_space.vertical_projection(corner_d)
         if projected_corner_d is not None:
             potential_points.append(projected_corner_d)
 
-        corner_h = Point(point.x, point.y, point.z + box.size.h)
+        corner_h = (point[0], point[1], point[2] + box.size[2])
         projected_corner_h = self.used_space.vertical_projection(corner_h)
         if projected_corner_h is not None:
             potential_points.append(projected_corner_h)
@@ -44,8 +44,8 @@ class Packing:
             return False
         
         # does the box exceed the container boundaries
-        corner = Point(point.x + box.size.w, point.y + box.size.d, point.z + box.size.h)
-        if corner.x > self.container.size.w or corner.y > self.container.size.d or corner.z > self.container.size.h:
+        corner = (point[0] + box.size[0], point[1] + box.size[1], point[2] + box.size[2])
+        if corner[0] > self.container.size[0] or corner[1] > self.container.size[1] or corner[2] > self.container.size[2]:
             return False
 
         # does the box overlap another box
@@ -63,9 +63,7 @@ class Packing:
         if other is None: return True
         self_unused_ratio = 1 - self.used_space.ratio()
         other_unused_ratio = 1 - other.used_space.ratio()
-        self_floating = self.used_space.total_floating()
-        other_floating = other.used_space.total_floating()
-        return other is None or (self_unused_ratio, self_floating) < (other_unused_ratio, other_floating)
+        return other is None or self_unused_ratio < other_unused_ratio
 
     def unfloat(self):
         for box in self.boxes: self.used_space.unfloat(box)
@@ -97,7 +95,7 @@ class PackingInput:
         self.scalar = scalar
         # init container
         container = json_data['container']
-        container_size = Size((container['width'], container['depth'], container['height']))
+        container_size = (container['width'], container['depth'], container['height'])
         self.container = Container(container_size, container['maxWeight'])
         
         # init boxes
@@ -114,7 +112,7 @@ class PackingInput:
             for _ in range(amount):
                 box = Box(
                     box_type=pkg['type'],
-                    size=Size((width, depth, height)),
+                    size=(width, depth, height),
                     weight=weight,
                     profit=float(pkg['profit']),
                     priority=priority,
@@ -141,9 +139,9 @@ class PackingResult:
         if self.packing is not None:
             container_size = self.packing.container.size
             json_data['container'] = {
-                "width": int(container_size.w),
-                "height": int(container_size.h),
-                "depth": int(container_size.d),
+                "width": int(container_size[0]),
+                "depth": int(container_size[1]),
+                "height": int(container_size[2]),
                 "maxWeight": float(self.packing_input.container.weight_limit)
             }
             
@@ -174,9 +172,9 @@ class PackingResult:
                     box_type = box.box_type
                     json_data['solution'].append({
                         "type": box_type,
-                        "x": box.position.x,
-                        "y": box.position.y,
-                        "z": box.position.z,
+                        "x": box.position[0],
+                        "y": box.position[1],
+                        "z": box.position[2],
                         "rotation-x": rotation.x,
                         "rotation-y": rotation.y, 
                         "rotation-z": rotation.z

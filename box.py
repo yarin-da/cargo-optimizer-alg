@@ -39,17 +39,16 @@ class Box:
 
     def get_common_dims(self, other):
         common_dims = []
-        if self.size.w == other.size.w: common_dims.append('w')
-        if self.size.h == other.size.h: common_dims.append('h')
-        if self.size.d == other.size.d: common_dims.append('d')
+        if self.size[0] == other.size[0]: common_dims.append('w')
+        if self.size[1] == other.size[1]: common_dims.append('d')
+        if self.size[2] == other.size[2]: common_dims.append('h')
         return common_dims
 
     def rotate(self, new_rotation_type: RotationType = None) -> None:
         if new_rotation_type is None:
             new_rotation_type = random.choice(list(self.rotations))
         
-        new_dims = new_rotation_type.permute(self.size.to_tuple())
-        self.size = Size(new_dims)
+        self.size = new_rotation_type.permute(self.size)
         self.rotation_type = self.rotation_type.rotate(new_rotation_type)
         
         if self.combination is not None:
@@ -81,13 +80,15 @@ class Box:
         stackable = box_a.stackable and box_b.stackable
         rotations = box_a.rotations.intersection(box_b.rotations)
 
+        size_a = box_a.size
+        size_b = box_b.size
         # size depends on the type of combination
         if combination.combination_type in [CombinationType.WH_LOWER, CombinationType.WH_HIGHER]:
-            size = Size((box_a.size.w, box_a.size.d + box_b.size.d, box_a.size.h))
+            size = ((size_a[0], size_a[1] + size_b[1], size_a[2]))
         elif combination.combination_type in [CombinationType.WD_LOWER, CombinationType.WD_HIGHER]:
-            size = Size((box_a.size.w, box_a.size.d, box_a.size.h + box_b.size.h))
+            size = ((size_a[0], size_a[1], size_a[2] + size_b[2]))
         else:
-            size = Size((box_a.size.w + box_b.size.w, box_a.size.d, box_a.size.h))
+            size = ((size_a[0] + size_b[0], size_a[1], size_a[2]))
 
         # call constructor
         return cls('combined', size, weight, profit, priority, rotations, stackable, combination)

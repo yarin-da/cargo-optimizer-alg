@@ -23,7 +23,7 @@ class PerturbRotation(Enum):
 
 @unique
 class SortingType(Enum):
-    DECREASING_VOLUME    = auto()
+    DECREASING_VOLUME        = auto()
     DECREASING_PRIORITY      = auto()
     DECREASING_CUSTOMER_CODE = auto()
     DECREASING_PROFIT        = auto()
