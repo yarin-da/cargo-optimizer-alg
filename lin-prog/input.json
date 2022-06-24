@@ -2,7 +2,7 @@
     "container": {
         "width": 4,
         "height": 4,
-        "depth": 4,
+        "depth": 10,
         "cost": 10,
         "maxWeight": 5500
     },
@@ -11,13 +11,13 @@
             "id": "id10",
             "type": "jewelry",
             "height": 1,
-            "width": 1,
-            "depth": 1,
+            "width": 2,
+            "depth": 3,
             "weight": 5,
             "amount": 4,
             "priority": 5,
             "profit": 100,
-            "canRotate": false,
+            "canRotate": true,
             "canStackAbove": true
         },
         {
@@ -25,7 +25,7 @@
             "type": "glass",
             "height": 1,
             "width": 1,
-            "depth": 1,
+            "depth": 3,
             "weight": 7,
             "amount": 2,
             "priority": 10,
