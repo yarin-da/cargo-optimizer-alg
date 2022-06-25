@@ -10,10 +10,9 @@ import os
 import json
 from packing import *
 from debug_utils import *
-from typing import Callable, Any
 
 
-ALGORITHM_REPEAT_COUNT = int(os.environ.get('REPEAT', '150'))
+ALGORITHM_REPEAT_COUNT = int(os.environ.get('REPEAT', '100'))
 SKIP_COMBINE_PROBABILITY = 1
 REORDER_PROBABILITY = 0.5
 REORDER_RATIO_OFFSET = 0.3
@@ -55,11 +54,11 @@ def sort_boxes(boxes: list[Box], sorting_type: SortingType = None) -> None:
     if sorting_type == SortingType.DECREASING_VOLUME:
         boxes.sort(key=lambda box: (2 if box.stackable else 1, volume(box.size), box.priority, box.profit), reverse=True)
     elif sorting_type == SortingType.DECREASING_PRIORITY:
-        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.priority, volume(box.size)), reverse=True)
+        boxes.sort(key=lambda box: (box.priority, volume(box.size), box.profit), reverse=True)
     elif sorting_type == SortingType.DECREASING_PROFIT:
-        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.profit, box.priority, volume(box.size)), reverse=True)
+        boxes.sort(key=lambda box: (box.profit, box.priority, volume(box.size)), reverse=True)
     else:
-        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.customer_code, volume(box.size)), reverse=True)
+        boxes.sort(key=lambda box: (2 if box.stackable else 1, box.customer_code, volume(box.size), box.priority, box.profit), reverse=True)
 
 
 def perturb_phase1(boxes: list[Box]) -> None:
@@ -164,10 +163,11 @@ def rch(packing_input: PackingInput) -> PackingResult:
             best_packing = packing
         ratio = best_packing.used_space_ratio()
         print_debug(f'[{i}/{ALGORITHM_REPEAT_COUNT}] best_packing::used_volume {ratio}\r')
-        # have we already finished?
-        if ratio == 1 or len(best_packing.boxes) == len(boxes): break
-        
+        # finish if we already used all the available boxes
+        if len(best_packing.boxes) == len(boxes): break
+    
     print_debug(best_packing.get_stats(packing_input))
+    best_packing.unfloat()
     result = PackingResult(packing_input=packing_input, packing=best_packing)
     return result
     

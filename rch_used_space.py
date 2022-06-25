@@ -27,7 +27,8 @@ class UsedSpace:
     def unfloat(self, box: Box) -> None:
         while self.is_floating(box):
             z = box.position[2]
-            box.position[2] = z - 1
+            x, y, _ = box.position
+            box.position = (x, y, z - 1)
             begin_w = box.position[0]
             end_w = begin_w + box.size[0]
             begin_d = box.position[1]
