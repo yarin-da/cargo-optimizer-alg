@@ -122,7 +122,7 @@ def update_result(result, n, s_list, boxes, x_list, y_list, z_list, total_weight
 
 
 def update_stats(result, total_weight, total_usage, total_profit, L, H, W):
-    # TODO
+
     result['stats'] = {
         'profit': total_profit,
         'weight': total_weight,
