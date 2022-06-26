@@ -74,10 +74,10 @@ def perturb_phase1(boxes: list[Box]) -> None:
 
 
 def perturb_phase2(boxes: list[Box]) -> None:
-    perturb_rotation = random.choice(list(PerturbOrder))
+    perturb_order = random.choice(list(PerturbOrder))
     for i in range(len(boxes) - 1):
-        key_curr = volume(boxes[i].size) if perturb_rotation == PerturbOrder.VOLUME else boxes[i].weight
-        key_next = volume(boxes[i + 1].size) if perturb_rotation == PerturbOrder.VOLUME else boxes[i + 1].weight
+        key_curr = volume(boxes[i].size) if perturb_order == PerturbOrder.VOLUME else boxes[i].weight
+        key_next = volume(boxes[i + 1].size) if perturb_order == PerturbOrder.VOLUME else boxes[i + 1].weight
         ratio = key_curr / key_next
         if REORDER_RATIO_LOWER_BOUND <= ratio <= REORDER_RATIO_HIGHER_BOUND and chance(REORDER_PROBABILITY):
             boxes[i], boxes[i + 1] = boxes[i + 1], boxes[i]
@@ -161,8 +161,6 @@ def rch(packing_input: PackingInput) -> PackingResult:
         packing = construct_packing(boxes, container)
         if is_feasible(packing) and packing.is_better_than(best_packing, packing_input.preference):
             best_packing = packing
-        ratio = best_packing.used_space_ratio()
-        print_debug(f'[{i}/{ALGORITHM_REPEAT_COUNT}] best_packing::used_volume {ratio}\r')
         # finish if we already used all the available boxes
         if len(best_packing.boxes) == len(boxes): break
     
